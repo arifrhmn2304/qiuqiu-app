@@ -944,6 +944,23 @@
     }
   });
 
+  // Fungsi pembanding kartu untuk UI Client (Sama seperti server)
+  function compareHands(p1, p2) {
+    const evalA = p1.evalData;
+    const evalB = p2.evalData;
+
+    if (!evalA || !evalB) return 0;
+
+    if (evalA.isDoubleTwin && !evalB.isDoubleTwin) return -1;
+    if (!evalA.isDoubleTwin && evalB.isDoubleTwin) return 1;
+    if (evalA.isDoubleTwin && evalB.isDoubleTwin) return evalB.highestTwin - evalA.highestTwin;
+
+    if (evalA.value !== evalB.value) return evalB.value - evalA.value;
+    if (evalA.highestTwin !== evalB.highestTwin) return evalB.highestTwin - evalA.highestTwin;
+    if (evalA.totalDots !== evalB.totalDots) return evalB.totalDots - evalA.totalDots;
+    return 0;
+  }
+
   socket.on('error_msg', (msg) => alert(msg));
 </script>
 
