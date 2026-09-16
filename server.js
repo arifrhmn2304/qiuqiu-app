@@ -96,19 +96,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on('reveal_single_card', ({ cardIndex }) => {
-    const roomId = 'FREE_BET';
-    const room = rooms[roomId];
-    if (!room || room.status !== 'PLAYING') return;
-
-    const player = room.players.find(p => p.socketId === socket.id);
-    if (player && !player.isSpectator && !player.revealedCards[cardIndex]) {
-      player.revealedCards[cardIndex] = true;
-      broadcastRoomState(roomId);
-
-      const activePlayers = room.players.filter(p => !p.isSpectator);
-      const allRevealed = activePlayers.every(p => p.revealedCards[0] && p.revealedCards[1]);
-      if (allRevealed) handleShowdown(room);
+    const player = getPlayerBySocketId(socket.id);
+    if (!player || !player.hand) return;
+  
+    // Tandai kartu yang digeser/dibuka oleh pemain
+    player.revealedCards[cardIndex] = true;
+  
+    // CEK: Jika KEDUA kartu (indeks 0 dan 1) sudah dibuka oleh pemain ini
+    if (player.revealedCards[0] && player.revealedCards[1]) {
+      player.isFullyRevealed = true; // Tandai kartu sudah terbuka penuh
     }
+  
+    // Kirim update status room terbaru ke SELURUH PEMAIN di meja
+    io.emit('room_state_updated', getRoomState());
   });
 
   socket.on('dealer_continue', () => {
