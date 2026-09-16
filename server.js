@@ -100,12 +100,12 @@ io.on('connection', (socket) => {
     room.players.push(newPlayer);
     socket.join(roomId);
 
-    io.to(roomId).emit('sys_message', `${pName} bergabung (${newPlayer.isSpectator ? 'Menonton' : 'Pemain'}).`);
+    // HANYA NOTIF PEMAIN BERGABUNG
+    io.to(roomId).emit('sys_message', `${pName} bergabung ke meja.`);
     broadcastRoomState(roomId);
     checkAutoStart(room);
   });
 
-  // FITUR TOGGLE MODE PENONTON (Posisi Yang Benar)
   socket.on('toggle_spectator', () => {
     const { player, room } = getPlayerBySocketId(socket.id);
     if (!player || !room) return;
@@ -118,14 +118,18 @@ io.on('connection', (socket) => {
     player.hand = [];
     player.revealedCards = [false, false];
     player.isFullyRevealed = false;
-
-    const statusText = player.isSpectator ? 'menjadi Penonton 👁️' : 'siap Bermain 🎲';
-    io.to(room.roomId).emit('sys_message', `${player.name} sekarang ${statusText}`);
     
+    // Jika pemain aktif kurang dari 2, reset ke WAITING
+    const activePlayers = room.players.filter(p => !p.isSpectator);
+    if (activePlayers.length < 2 && room.status !== 'WAITING') {
+      clearRoomTimers(room);
+      room.status = 'WAITING';
+    }
+
     broadcastRoomState(room.roomId);
+    checkAutoStart(room);
   });
 
-  // PERPINDAHAN KURSI BEBAS
   socket.on('switch_seat', ({ targetSeatIndex }) => {
     const { player, room } = getPlayerBySocketId(socket.id);
     if (!player || !room) return;
@@ -140,8 +144,8 @@ io.on('connection', (socket) => {
     if (isSeatOccupied) return socket.emit('error_msg', 'Kursi tersebut sudah terisi!');
 
     player.seatIndex = targetSeatIndex;
+    // NOTIFIKASI CHAT TEKS PINDAH KURSI SUDAH DIHAPUS
 
-    io.to(room.roomId).emit('sys_message', `${player.name} berpindah ke Kursi ${targetSeatIndex + 1}.`);
     broadcastRoomState(room.roomId);
   });
 
@@ -177,7 +181,8 @@ io.on('connection', (socket) => {
 
     const player = room.players.find(p => p.socketId === socket.id);
     if (player && player.isDealer) {
-      if (room.players.length >= 2) {
+      const activePlayers = room.players.filter(p => !p.isSpectator);
+      if (activePlayers.length >= 2) {
         startNewRound(room);
       } else {
         room.status = 'WAITING';
@@ -205,6 +210,8 @@ io.on('connection', (socket) => {
       const idx = room.players.findIndex(p => p.socketId === socket.id);
       if (idx !== -1) {
         room.players.splice(idx, 1);
+        
+        // HANYA NOTIF PEMAIN KELUAR
         io.to(room.roomId).emit('sys_message', `${pName} keluar dari meja.`);
 
         if (room.players.length === 0) {
@@ -256,7 +263,8 @@ function checkAllPlayersRevealed(room) {
 }
 
 function checkAutoStart(room) {
-  if (room.status === 'WAITING' && room.players.length >= 2 && !room.autoStartTimer) {
+  const activePlayers = room.players.filter(p => !p.isSpectator);
+  if (room.status === 'WAITING' && activePlayers.length >= 2 && !room.autoStartTimer) {
     let countdown = 5;
     io.to(room.roomId).emit('timer_sync', { sec: countdown, maxSec: 5 });
 
@@ -266,7 +274,8 @@ function checkAutoStart(room) {
         io.to(room.roomId).emit('timer_sync', { sec: countdown, maxSec: 5 });
       } else {
         clearRoomTimers(room);
-        if (room.players.length >= 2) startNewRound(room);
+        const currentActive = room.players.filter(p => !p.isSpectator);
+        if (currentActive.length >= 2) startNewRound(room);
         else {
           room.status = 'WAITING';
           broadcastRoomState(room.roomId);
@@ -278,17 +287,28 @@ function checkAutoStart(room) {
 
 function startNewRound(room) {
   clearRoomTimers(room);
+  
+  const activePlayers = room.players.filter(p => !p.isSpectator);
+  if (activePlayers.length < 2) {
+    room.status = 'WAITING';
+    broadcastRoomState(room.roomId);
+    return;
+  }
+
   room.status = 'PLAYING';
   const deck = shuffleDeck(DOMINO_DECK);
 
-  if (typeof room.dealerIndex === 'undefined' || room.dealerIndex >= room.players.length) {
-    room.dealerIndex = 0;
-  } else {
-    room.dealerIndex = (room.dealerIndex + 1) % room.players.length;
-  }
+  // Ganti Bandar ke pemain AKTIF berikutnya yang tidak spectate
+  let activeDealerIdx = room.dealerIndex || 0;
+  let attempts = 0;
+  do {
+    activeDealerIdx = (activeDealerIdx + 1) % room.players.length;
+    attempts++;
+  } while (room.players[activeDealerIdx] && room.players[activeDealerIdx].isSpectator && attempts < room.players.length);
+
+  room.dealerIndex = activeDealerIdx;
 
   room.players.forEach((player, idx) => {
-    // HANYA reset kartu untuk player yang TIDAK sedang memilih mode penonton
     if (!player.isSpectator) {
       player.isDealer = (idx === room.dealerIndex);
       player.hand = [deck.pop(), deck.pop()];
@@ -296,6 +316,7 @@ function startNewRound(room) {
       player.isFullyRevealed = false;
       player.evalData = evaluateHand2Cards(player.hand);
     } else {
+      player.isDealer = false;
       player.hand = [];
       player.revealedCards = [false, false];
       player.isFullyRevealed = false;
@@ -319,8 +340,10 @@ function startPlayPhase(room) {
       clearRoomTimers(room);
       if (room.status === 'PLAYING') {
         room.players.forEach(p => {
-          p.revealedCards = [true, true];
-          p.isFullyRevealed = true;
+          if (!p.isSpectator) {
+            p.revealedCards = [true, true];
+            p.isFullyRevealed = true;
+          }
         });
         handleShowdown(room);
       }
