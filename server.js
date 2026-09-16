@@ -288,12 +288,19 @@ function startNewRound(room) {
   }
 
   room.players.forEach((player, idx) => {
-    player.isSpectator = false;
-    player.isDealer = (idx === room.dealerIndex);
-    player.hand = [deck.pop(), deck.pop()];
-    player.revealedCards = [false, false];
-    player.isFullyRevealed = false;
-    player.evalData = evaluateHand2Cards(player.hand);
+    // HANYA reset kartu untuk player yang TIDAK sedang memilih mode penonton
+    if (!player.isSpectator) {
+      player.isDealer = (idx === room.dealerIndex);
+      player.hand = [deck.pop(), deck.pop()];
+      player.revealedCards = [false, false];
+      player.isFullyRevealed = false;
+      player.evalData = evaluateHand2Cards(player.hand);
+    } else {
+      player.hand = [];
+      player.revealedCards = [false, false];
+      player.isFullyRevealed = false;
+      player.evalData = null;
+    }
   });
 
   broadcastRoomState(room.roomId, true);
