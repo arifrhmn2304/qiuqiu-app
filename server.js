@@ -7,10 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-// Serve static files dari folder public
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-// Routing kompatibel Express v5
 app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
@@ -55,7 +53,6 @@ function evaluateHand2Cards(cards) {
 
 const rooms = {};
 
-// Helper untuk mencari player berdasarkan socketId
 function getPlayerBySocketId(socketId) {
   for (const roomId in rooms) {
     const player = rooms[roomId].players.find(p => p.socketId === socketId);
@@ -74,7 +71,8 @@ io.on('connection', (socket) => {
         status: 'WAITING', 
         players: [],
         dealerIndex: 0,
-        autoStartTimer: null 
+        autoStartTimer: null,
+        turnTimer: null
       };
     }
 
@@ -85,9 +83,10 @@ io.on('connection', (socket) => {
     let assignedSeat = 0;
     while (takenSeats.includes(assignedSeat)) assignedSeat++;
 
+    const pName = playerName || `Player ${assignedSeat + 1}`;
     const newPlayer = {
       socketId: socket.id,
-      name: playerName || `Player ${assignedSeat + 1}`,
+      name: pName,
       avatar: getRandomItem(AVATARS),
       color: getRandomItem(BG_COLORS),
       seatIndex: assignedSeat,
@@ -101,13 +100,27 @@ io.on('connection', (socket) => {
     room.players.push(newPlayer);
     socket.join(roomId);
 
+    // Broadcast Notifikasi Pemain Masuk & Update State
+    io.to(roomId).emit('sys_message', `${pName} bergabung ke meja.`);
     broadcastRoomState(roomId);
     checkAutoStart(room);
   });
 
+  // Handler Chat Pesan Teks
+  socket.on('send_chat', ({ message }) => {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (!player || !room || !message.trim()) return;
+
+    io.to(room.roomId).emit('new_chat', {
+      sender: player.name,
+      color: player.color,
+      message: message.trim().substring(0, 60) // Limit 60 karakter
+    });
+  });
+
   socket.on('reveal_single_card', ({ cardIndex }) => {
     const { player, room } = getPlayerBySocketId(socket.id);
-    if (!player || !player.hand) return;
+    if (!player || !player.hand || room.status !== 'PLAYING') return;
 
     player.revealedCards[cardIndex] = true;
 
@@ -116,6 +129,7 @@ io.on('connection', (socket) => {
     }
 
     broadcastRoomState(room.roomId);
+    checkAllPlayersRevealed(room);
   });
 
   socket.on('dealer_continue', () => {
@@ -130,17 +144,15 @@ io.on('connection', (socket) => {
       } else {
         room.status = 'WAITING';
         broadcastRoomState(roomId);
+        checkAutoStart(room);
       }
     }
   });
 
   socket.on('send_reaction', ({ type, content }) => {
-    const roomId = 'FREE_BET';
-    const room = rooms[roomId];
-    if (!room) return;
-    const player = room.players.find(p => p.socketId === socket.id);
-    if (player) {
-      io.to(roomId).emit('broadcast_reaction', {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (player && room) {
+      io.to(room.roomId).emit('broadcast_reaction', {
         seatIndex: player.seatIndex,
         type,
         content
@@ -149,23 +161,32 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const roomId = 'FREE_BET';
-    const room = rooms[roomId];
-    if (room) {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (room && player) {
+      const pName = player.name;
       const idx = room.players.findIndex(p => p.socketId === socket.id);
       if (idx !== -1) {
         room.players.splice(idx, 1);
+        io.to(room.roomId).emit('sys_message', `${pName} keluar dari meja.`);
+
         if (room.players.length === 0) {
           clearRoomTimers(room);
-          delete rooms[roomId];
+          delete rooms[room.roomId];
         } else {
           const activePlayers = room.players.filter(p => !p.isSpectator);
+          
+          // FIX STUCK: Jika pemain sisa kurang dari 2 saat game berjalan, reset ke WAITING
           if (room.status !== 'WAITING' && activePlayers.length < 2) {
             clearRoomTimers(room);
             room.status = 'WAITING';
             room.players.forEach(p => p.isSpectator = false);
+            io.to(room.roomId).emit('sys_message', `Pemain tidak cukup. Menunggu pemain baru...`);
+          } else if (room.status === 'PLAYING') {
+            // Cek ulang apakah sisa pemain sudah buka kartu semua setelah ada yang dc
+            checkAllPlayersRevealed(room);
           }
-          broadcastRoomState(roomId);
+
+          broadcastRoomState(room.roomId);
           checkAutoStart(room);
         }
       }
@@ -174,8 +195,28 @@ io.on('connection', (socket) => {
 });
 
 function clearRoomTimers(room) {
-  if (room.autoStartTimer) clearInterval(room.autoStartTimer);
-  if (room.turnTimer) clearInterval(room.turnTimer);
+  if (room.autoStartTimer) {
+    clearInterval(room.autoStartTimer);
+    room.autoStartTimer = null;
+  }
+  if (room.turnTimer) {
+    clearInterval(room.turnTimer);
+    room.turnTimer = null;
+  }
+}
+
+function checkAllPlayersRevealed(room) {
+  if (!room || room.status !== 'PLAYING') return;
+
+  const activePlayers = room.players.filter(p => !p.isSpectator);
+  const allRevealed = activePlayers.length > 0 && activePlayers.every(p => p.isFullyRevealed);
+
+  if (allRevealed) {
+    clearRoomTimers(room);
+    setTimeout(() => {
+      if (room.status === 'PLAYING') handleShowdown(room);
+    }, 400);
+  }
 }
 
 function checkAutoStart(room) {
@@ -188,9 +229,12 @@ function checkAutoStart(room) {
       if (countdown > 0) {
         io.to(room.roomId).emit('timer_sync', { sec: countdown, maxSec: 5 });
       } else {
-        clearInterval(room.autoStartTimer);
-        room.autoStartTimer = null;
+        clearRoomTimers(room);
         if (room.players.length >= 2) startNewRound(room);
+        else {
+          room.status = 'WAITING';
+          broadcastRoomState(room.roomId);
+        }
       }
     }, 1000);
   }
@@ -201,7 +245,7 @@ function startNewRound(room) {
   room.status = 'PLAYING';
   const deck = shuffleDeck(DOMINO_DECK);
 
-  if (typeof room.dealerIndex === 'undefined') {
+  if (typeof room.dealerIndex === 'undefined' || room.dealerIndex >= room.players.length) {
     room.dealerIndex = 0;
   } else {
     room.dealerIndex = (room.dealerIndex + 1) % room.players.length;
@@ -229,7 +273,7 @@ function startPlayPhase(room) {
     if (timeLeft > 0 && room.status === 'PLAYING') {
       io.to(room.roomId).emit('timer_sync', { sec: timeLeft, maxSec: 20 });
     } else {
-      clearInterval(room.turnTimer);
+      clearRoomTimers(room);
       if (room.status === 'PLAYING') {
         room.players.forEach(p => {
           p.revealedCards = [true, true];
