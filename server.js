@@ -73,6 +73,27 @@ io.on('connection', (socket) => {
         dealerIndex: 0,
         autoStartTimer: null,
         turnTimer: null
+
+  // FITUR TOGGLE MODE PENONTON
+  socket.on('toggle_spectator', () => {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (!player || !room) return;
+
+    // HANYA BISA UBAH STATUS SAAT WAITING / SHOWDOWN
+    if (room.status !== 'WAITING' && room.status !== 'SHOWDOWN') {
+      return socket.emit('error_msg', 'Ubah mode penonton hanya bisa saat ronde selesai!');
+    }
+
+    player.isSpectator = !player.isSpectator;
+    player.hand = [];
+    player.revealedCards = [false, false];
+    player.isFullyRevealed = false;
+
+    const statusText = player.isSpectator ? 'menjadi Penonton 👁️' : 'siap Bermain 🎲';
+    io.to(room.roomId).emit('sys_message', `${player.name} sekarang ${statusText}`);
+    
+    broadcastRoomState(room.roomId);
+        });
       };
     }
 
