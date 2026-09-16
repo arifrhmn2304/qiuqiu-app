@@ -822,10 +822,36 @@
         }
 
         let scoreText = '';
+        let scoreColor = '#ffd700'; // Warna default emas
+
         const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
 
         if (!p.isSpectator && (isBothCardsRevealed || status === 'SHOWDOWN') && p.evalData) {
-          scoreText = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
+          const rawScore = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
+          
+          // Warna hijau/merah HANYA dihitung saat SHOWDOWN (Ronde Selesai)
+          if (status === 'SHOWDOWN') {
+            const dealer = players.find(item => item.isDealer);
+
+            if (dealer) {
+              if (p.isDealer) {
+                // Bandar tetap warna emas
+                scoreColor = '#ffd700';
+              } else {
+                // Bandingkan tangan pemain dengan Bandar
+                const compResult = compareHands(p, dealer);
+                if (compResult < 0) {
+                  // Pemain Menang lawan Bandar -> HIJAU
+                  scoreColor = '#2ed573';
+                } else {
+                  // Pemain Kalah / Seri lawan Bandar -> MERAH
+                  scoreColor = '#ff4757';
+                }
+              }
+            }
+          }
+
+          scoreText = `<span style="color: ${scoreColor}; text-shadow: 0 0 8px ${scoreColor}88;">${rawScore}</span>`;
         }
 
         const dealerCoin = p.isDealer ? `<div class="dealer-coin" title="Bandar">B</div>` : '';
