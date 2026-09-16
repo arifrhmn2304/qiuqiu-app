@@ -331,18 +331,20 @@
 
     /* Live Chat CSS */
     .chat-container {
-      position: absolute;
-      bottom: 60px;
-      left: 10px;
-      width: 200px;
-      height: 130px;
-      background: rgba(0, 0, 0, 0.75);
-      border: 1px solid rgba(255, 215, 0, 0.3);
+      position: fixed;
+      bottom: 75px;
+      left: 12px;
+      width: 180px;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 215, 0, 0.4);
       border-radius: 10px;
       display: flex;
       flex-direction: column;
-      z-index: 25;
+      z-index: 40; /* Ditingkatkan agar berada di atas layer dasar tapi tidak menutupi overlay */
       padding: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      pointer-events: auto;
     }
     .chat-messages {
       flex: 1;
@@ -394,14 +396,6 @@
 
   <button class="btn-dealer-next" id="dealer-btn" style="display:none;" onclick="dealerNextRound()">LANJUT</button>
 
-  <div class="chat-container">
-    <div class="chat-messages" id="chat-box"></div>
-    <div class="chat-input-row">
-      <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
-      <button onclick="sendChat()">Kirim</button>
-    </div>
-  </div>
-
   <div class="bottom-controls-bar">
     <div class="emote-bar">
       <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
@@ -411,6 +405,16 @@
     </div>
   </div>
 </div>
+
+<div class="chat-container">
+  <div class="chat-messages" id="chat-box"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
+    <button onclick="sendChat()">Kirim</button>
+  </div>
+</div>
+
+</body>
 
 <script>
   let isMuted = false;
