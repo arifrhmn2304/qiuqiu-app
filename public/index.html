@@ -541,39 +541,8 @@
         sfxFlip.play().catch(e => console.log('Audio Flip Error:', e));
 
       } else if (type === 'chip') {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(2400, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.08);
-        gain.gain.setValueAtTime(volume, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.08);
-
-      } else if (type === 'win') {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);
-          gain.gain.linearRampToValueAtTime(volume * 0.25, ctx.currentTime + i * 0.08 + 0.02);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.4);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(ctx.currentTime + i * 0.08);
-          osc.stop(ctx.currentTime + i * 0.08 + 0.4);
-        });
+        return;
       }
-    } catch (e) {
-      console.log('Audio Blocked:', e);
-    }
-  }
 
   const socket = io({ transports: ['websocket', 'polling'] });
   let mySeatIndex = 0;
