@@ -100,27 +100,37 @@ io.on('connection', (socket) => {
     room.players.push(newPlayer);
     socket.join(roomId);
 
-    // Broadcast Notifikasi Pemain Masuk & Update State
-    io.to(roomId).emit('sys_message', `${pName} bergabung ke meja.`);
+    io.to(roomId).emit('sys_message', `${pName} bergabung (${newPlayer.isSpectator ? 'Menonton' : 'Pemain'}).`);
     broadcastRoomState(roomId);
     checkAutoStart(room);
   });
 
-  // Handler Chat Pesan Teks
-  socket.on('send_chat', ({ message }) => {
+  // PERPINDAHAN KURSI BEBAS (Dengan Pengunci Status Game)
+  socket.on('switch_seat', ({ targetSeatIndex }) => {
     const { player, room } = getPlayerBySocketId(socket.id);
-    if (!player || !room || !message.trim()) return;
+    if (!player || !room) return;
 
-    io.to(room.roomId).emit('new_chat', {
-      sender: player.name,
-      color: player.color,
-      message: message.trim().substring(0, 60) // Limit 60 karakter
-    });
+    // KUNCI: Pindah kursi HANYA BISA saat WAITING atau SHOWDOWN (Sebelum dealer membagikan ronde baru)
+    if (room.status !== 'WAITING' && room.status !== 'SHOWDOWN') {
+      return socket.emit('error_msg', 'Pindah kursi hanya bisa dilakukan saat ronde selesai!');
+    }
+
+    if (targetSeatIndex < 0 || targetSeatIndex > 5) return;
+
+    const isSeatOccupied = room.players.some(p => p.seatIndex === targetSeatIndex);
+    if (isSeatOccupied) return socket.emit('error_msg', 'Kursi tersebut sudah terisi!');
+
+    // Simpan kursi lama untuk notifikasi chat
+    const oldSeat = player.seatIndex;
+    player.seatIndex = targetSeatIndex;
+
+    io.to(room.roomId).emit('sys_message', `${player.name} berpindah ke Kursi ${targetSeatIndex + 1}.`);
+    broadcastRoomState(room.roomId);
   });
 
   socket.on('reveal_single_card', ({ cardIndex }) => {
     const { player, room } = getPlayerBySocketId(socket.id);
-    if (!player || !player.hand || room.status !== 'PLAYING') return;
+    if (!player || !player.hand || room.status !== 'PLAYING' || player.isSpectator) return;
 
     player.revealedCards[cardIndex] = true;
 
@@ -175,14 +185,12 @@ io.on('connection', (socket) => {
         } else {
           const activePlayers = room.players.filter(p => !p.isSpectator);
           
-          // FIX STUCK: Jika pemain sisa kurang dari 2 saat game berjalan, reset ke WAITING
           if (room.status !== 'WAITING' && activePlayers.length < 2) {
             clearRoomTimers(room);
             room.status = 'WAITING';
             room.players.forEach(p => p.isSpectator = false);
             io.to(room.roomId).emit('sys_message', `Pemain tidak cukup. Menunggu pemain baru...`);
           } else if (room.status === 'PLAYING') {
-            // Cek ulang apakah sisa pemain sudah buka kartu semua setelah ada yang dc
             checkAllPlayersRevealed(room);
           }
 
