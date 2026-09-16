@@ -55,6 +55,15 @@ function evaluateHand2Cards(cards) {
 
 const rooms = {};
 
+// Helper untuk mencari player berdasarkan socketId
+function getPlayerBySocketId(socketId) {
+  for (const roomId in rooms) {
+    const player = rooms[roomId].players.find(p => p.socketId === socketId);
+    if (player) return { player, room: rooms[roomId] };
+  }
+  return { player: null, room: null };
+}
+
 io.on('connection', (socket) => {
   socket.on('join_room', ({ playerName }) => {
     const roomId = 'FREE_BET';
@@ -84,6 +93,7 @@ io.on('connection', (socket) => {
       seatIndex: assignedSeat,
       hand: [],
       revealedCards: [false, false],
+      isFullyRevealed: false,
       winStreak: 0,
       isSpectator: room.status !== 'WAITING'
     };
@@ -96,19 +106,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('reveal_single_card', ({ cardIndex }) => {
-    const player = getPlayerBySocketId(socket.id);
+    const { player, room } = getPlayerBySocketId(socket.id);
     if (!player || !player.hand) return;
-  
-    // Tandai kartu yang digeser/dibuka oleh pemain
+
     player.revealedCards[cardIndex] = true;
-  
-    // CEK: Jika KEDUA kartu (indeks 0 dan 1) sudah dibuka oleh pemain ini
+
     if (player.revealedCards[0] && player.revealedCards[1]) {
-      player.isFullyRevealed = true; // Tandai kartu sudah terbuka penuh
+      player.isFullyRevealed = true;
     }
-  
-    // Kirim update status room terbaru ke SELURUH PEMAIN di meja
-    io.emit('room_state_updated', getRoomState());
+
+    broadcastRoomState(room.roomId);
   });
 
   socket.on('dealer_continue', () => {
@@ -205,6 +212,7 @@ function startNewRound(room) {
     player.isDealer = (idx === room.dealerIndex);
     player.hand = [deck.pop(), deck.pop()];
     player.revealedCards = [false, false];
+    player.isFullyRevealed = false;
     player.evalData = evaluateHand2Cards(player.hand);
   });
 
@@ -223,7 +231,10 @@ function startPlayPhase(room) {
     } else {
       clearInterval(room.turnTimer);
       if (room.status === 'PLAYING') {
-        room.players.forEach(p => p.revealedCards = [true, true]);
+        room.players.forEach(p => {
+          p.revealedCards = [true, true];
+          p.isFullyRevealed = true;
+        });
         handleShowdown(room);
       }
     }
@@ -247,7 +258,12 @@ function compareHands(p1, p2) {
 function handleShowdown(room) {
   clearRoomTimers(room);
   room.status = 'SHOWDOWN';
-  room.players.forEach(p => { if (!p.isSpectator) p.revealedCards = [true, true]; });
+  room.players.forEach(p => { 
+    if (!p.isSpectator) {
+      p.revealedCards = [true, true];
+      p.isFullyRevealed = true;
+    }
+  });
 
   const activePlayers = room.players.filter(p => !p.isSpectator && p.evalData);
   if (activePlayers.length === 0) return;
@@ -295,9 +311,10 @@ function broadcastRoomState(roomId, isNewDeal = false) {
         isDealer: other.isDealer,
         winStreak: other.winStreak,
         revealedCards: other.revealedCards,
+        isFullyRevealed: other.isFullyRevealed,
         isSpectator: other.isSpectator,
-        hand: (isSelf || isShowdown) ? other.hand : null,
-        evalData: (isSelf || isShowdown) ? other.evalData : null,
+        hand: (isSelf || isShowdown || other.isFullyRevealed) ? other.hand : null,
+        evalData: (isSelf || isShowdown || other.isFullyRevealed) ? other.evalData : null,
         hasHand: !other.isSpectator && other.hand && other.hand.length === 2
       };
     });
