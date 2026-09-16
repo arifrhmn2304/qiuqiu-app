@@ -283,6 +283,34 @@
       font-family: 'Impact', 'Segoe UI', sans-serif;
     }
 
+    .chat-container {
+      position: absolute;
+      bottom: 60px;
+      left: 10px;
+      width: 220px;
+      height: 140px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      z-index: 25;
+      padding: 6px;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+.chat-msg { color: #fff; word-break: break-word; }
+.sys-msg { color: #ffd700; font-style: italic; font-size: 10px; }
+.chat-input-row { display: flex; gap: 4px; margin-top: 4px; }
+.chat-input-row input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11px; }
+.chat-input-row button { background: #2ed573; border: none; color: #000; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+
     @keyframes pulseBtnCenter { 
       0% { transform: translate(-50%, -50%) scale(0.95); } 
       100% { transform: translate(-50%, -50%) scale(1.05); } 
@@ -322,6 +350,14 @@
       <span class="emote-btn" onclick="sendEmote('😎')">😎</span>
       <span class="emote-btn" onclick="sendEmote('💩')">💩</span>
     </div>
+  </div>
+</div>
+
+  <div class="chat-container">
+  <div class="chat-messages" id="chat-box"></div>
+  <div class="chat-input-row">
+    <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
+    <button onclick="sendChat()">Kirim</button>
   </div>
 </div>
 
@@ -634,6 +670,33 @@
     el.addEventListener('mousedown', onStart); window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onEnd);
     el.addEventListener('touchstart', onStart); window.addEventListener('touchmove', onMove); window.addEventListener('touchend', onEnd);
   }
+
+  function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (msg) {
+      socket.emit('send_chat', { message: msg });
+      input.value = '';
+    }
+  }
+  
+  socket.on('new_chat', ({ sender, color, message }) => {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<b style="color:${color}">${sender}:</b> ${message}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  });
+  
+  socket.on('sys_message', (msg) => {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'sys-msg';
+    div.innerText = `🔔 ${msg}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  });
 
   socket.on('broadcast_reaction', ({ seatIndex, content }) => {
     const seatEl = document.getElementById(`seat-element-${seatIndex}`);
