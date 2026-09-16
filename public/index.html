@@ -831,10 +831,17 @@
           }, 50);
         }
       } else {
-        // KURSI KOSONG -> FITUR BEBAS PINDAH KURSI
-        seatDiv.innerHTML = `
-          <button class="empty-seat-btn" onclick="switchSeat(${seatIdx})">Duduk</button>
-        `;
+        // Tombol "Duduk" HANYA tampil saat WAITING atau SHOWDOWN
+        const canSwitchSeat = (status === 'WAITING' || status === 'SHOWDOWN');
+
+        if (canSwitchSeat) {
+          seatDiv.innerHTML = `
+            <button class="empty-seat-btn" onclick="switchSeat(${seatIdx})">Duduk</button>
+          `;
+        } else {
+          // Sembunyikan saat fase PLAYING
+          seatDiv.innerHTML = '';
+        }
       }
 
       container.appendChild(seatDiv);
