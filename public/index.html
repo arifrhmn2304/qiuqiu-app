@@ -296,6 +296,10 @@
     .login-overlay button { padding: 10px 20px; background: #adff2f; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 15px; touch-action: manipulation; }
   </style>
 </head>
+  <!-- Audio Elements (Gunakan MP3 berdurasi pendek & lembut) -->
+<audio id="sfx-shuffle" src="https://assets.mixkit.co/active_storage/sfx/2070/2070-preview.mp3" preload="auto"></audio>
+<audio id="sfx-chip" src="https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3" preload="auto"></audio>
+<audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto"></audio>
 <body>
 
 <div class="login-overlay" id="login">
@@ -586,7 +590,39 @@
     banner.innerText = `Menunggu bandar`;
   });
 
+  // Sound Effect Manager
+const soundEnabled = true;
+
+function playSFX(soundId, volume = 0.5) {
+  if (!soundEnabled) return;
+  const audio = document.getElementById(soundId);
+  if (audio) {
+    audio.currentTime = 0; // Reset ke awal agar bisa diplay beruntun
+    audio.volume = volume;
+    audio.play().catch(() => {
+      // Browser autoplay policy handler (jika user belum interaksi)
+    });
+  }
+}
+
   socket.on('error_msg', (msg) => alert(msg));
+    // Saat kartu dibagikan oleh server
+  socket.on('dealCards', (data) => {
+    playSFX('sfx-shuffle', 0.4);
+    // Kode pembagian kartu kamu yang lama...
+  });
+  
+  // Saat ada pemain pasang taruhan (Call/Raise)
+  socket.on('playerAction', (data) => {
+    playSFX('sfx-chip', 0.6);
+    // Kode animasi chip kamu...
+  });
+  
+  // Saat pengumuman pemenang ronde
+  socket.on('roundWinner', (data) => {
+    playSFX('sfx-win', 0.5);
+    // Kode efek menang kamu...
+  });
 </script>
 
 </body>
