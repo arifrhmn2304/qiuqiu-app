@@ -210,29 +210,28 @@
       box-sizing: border-box;
       touch-action: manipulation;
       -webkit-backface-visibility: hidden;
-      transition: transform 0.2s;
+      transition: transform 0.2s, box-shadow 0.3s ease;
     }
     .domino-card.covered { background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; }
 
-    /* EFEK VISUAL SPESIAL: GOLDEN GLOW (QIU QIU) & LIGHTNING (BALAK) */
+    /* EFEK VISUAL: EMAS (QIU QIU) & MERAH (BALAK) */
     .fx-qiu {
       box-shadow: 0 0 15px #ffd700, 0 0 25px #ff8c00 !important;
       border: 2px solid #ffd700 !important;
       animation: pulseGold 0.8s infinite alternate ease-in-out;
     }
     .fx-balak {
-      box-shadow: 0 0 15px #00d2d3, 0 0 25px #54a0ff !important;
-      border: 2px solid #00d2d3 !important;
-      animation: lightningShock 0.4s infinite alternate ease-in-out;
+      box-shadow: 0 0 15px #ff003c, 0 0 25px #ff4757 !important;
+      border: 2px solid #ff4757 !important;
+      animation: pulseRed 0.6s infinite alternate ease-in-out;
     }
     @keyframes pulseGold {
       0% { transform: scale(1); box-shadow: 0 0 10px #ffd700; }
-      100% { transform: scale(1.06); box-shadow: 0 0 22px #ff8c00; }
+      100% { transform: scale(1.05); box-shadow: 0 0 22px #ff8c00; }
     }
-    @keyframes lightningShock {
-      0% { filter: brightness(1); transform: rotate(0deg); }
-      50% { filter: brightness(1.6); transform: rotate(1deg); }
-      100% { filter: brightness(1.2); transform: rotate(-1deg); }
+    @keyframes pulseRed {
+      0% { transform: scale(1); box-shadow: 0 0 10px #ff003c; filter: brightness(1); }
+      100% { transform: scale(1.05); box-shadow: 0 0 25px #ff4757; filter: brightness(1.2); }
     }
 
     .card-cover { position: absolute; top: 0; left: 0; width: 42px; height: 74px; background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; border-radius: 6px; cursor: grab; z-index: 3; transition: transform 0.1s ease-out; touch-action: none; }
@@ -253,35 +252,6 @@
     .dot.active { opacity: 1; }
 
     .score-label { font-size: 12px; font-weight: bold; color: #ffd700; margin-top: 1px; min-height: 16px; z-index: 4; text-shadow: 0 1px 3px #000; }
-
-    .bottom-controls-bar { 
-        position: fixed; 
-        bottom: 12px; 
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex; 
-        align-items: center;
-        gap: 10px;
-        z-index: 35;
-        width: 95vw;
-        max-width: 420px;
-        justify-content: space-between;
-        pointer-events: none; /* Supaya klik di sela-sela tombol tembus ke meja */
-      }
-    
-    .emote-bar { 
-      pointer-events: auto;
-      display: flex; 
-      gap: 8px; 
-      background: rgba(0,0,0,0.85); 
-      padding: 6px 10px; 
-      border-radius: 16px; 
-      border: 1px solid #444; 
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
-    }
-    
-    .emote-btn { font-size: 18px; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
-    .emote-btn:active { transform: scale(1.3); }
 
     .btn-dealer-next { 
       position: absolute;
@@ -335,7 +305,22 @@
       font-family: 'Impact', 'Segoe UI', sans-serif;
     }
 
-    /* Live Chat CSS */
+    /* Kontainer Bawah Terintegrasi (Chat & Emote) */
+    .bottom-controls-bar { 
+      position: fixed; 
+      bottom: 12px; 
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex; 
+      align-items: center;
+      gap: 10px;
+      z-index: 35;
+      width: 95vw;
+      max-width: 420px;
+      justify-content: space-between;
+      pointer-events: none;
+    }
+
     .chat-container {
       pointer-events: auto;
       width: 170px;
@@ -348,7 +333,7 @@
       padding: 5px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.6);
     }
-    
+
     .chat-messages {
       flex: 1;
       overflow-y: auto;
@@ -359,6 +344,7 @@
     }
     .chat-msg { color: #fff; word-break: break-word; line-height: 1.2; }
     .sys-msg { color: #ffd700; font-style: italic; font-size: 9px; }
+
     .chat-input-row { display: flex; gap: 3px; margin-top: 3px; }
     .chat-input-row input { 
       flex: 1; 
@@ -380,7 +366,19 @@
       font-size: 9px; 
     }
 
-    
+    .emote-bar { 
+      pointer-events: auto;
+      display: flex; 
+      gap: 8px; 
+      background: rgba(0,0,0,0.85); 
+      padding: 6px 10px; 
+      border-radius: 16px; 
+      border: 1px solid #444; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+    }
+
+    .emote-btn { font-size: 18px; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+    .emote-btn:active { transform: scale(1.3); }
 
     @keyframes pulseBtnCenter { 
       0% { transform: translate(-50%, -50%) scale(0.95); } 
@@ -417,50 +415,30 @@
   <div id="seats-container"></div>
 
   <button class="btn-dealer-next" id="dealer-btn" style="display:none;" onclick="dealerNextRound()">LANJUT</button>
+</div>
 
-  <!-- BAR KONTROL BAWAH (Chat di Kiri, Emote di Kanan) -->
-  <div class="bottom-controls-bar">
-    <div class="chat-container">
-      <div class="chat-messages" id="chat-box"></div>
-      <div class="chat-input-row">
-        <input type="text" id="chat-input" placeholder="Pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
-        <button onclick="sendChat()">Kirim</button>
-      </div>
-    </div>
-
-    <div class="emote-bar">
-      <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
-      <span class="emote-btn" onclick="sendEmote('🔥')">🔥</span>
-      <span class="emote-btn" onclick="sendEmote('😎')">😎</span>
-      <span class="emote-btn" onclick="sendEmote('💩')">💩</span>
+<div class="bottom-controls-bar">
+  <div class="chat-container">
+    <div class="chat-messages" id="chat-box"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
+      <button onclick="sendChat()">Kirim</button>
     </div>
   </div>
 
-</body>
-</html>
-
-</body>
+  <div class="emote-bar">
+    <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
+    <span class="emote-btn" onclick="sendEmote('🔥')">🔥</span>
+    <span class="emote-btn" onclick="sendEmote('😎')">😎</span>
+    <span class="emote-btn" onclick="sendEmote('💩')">💩</span>
+  </div>
+</div>
 
 <script>
   let isMuted = false;
-  let bgmOscillator = null;
-  let bgmGain = null;
   let bgmInterval = null;
 
-  // 1. VOICE LINE ANNOUNCER (Web Speech Synthesis)
-  function playVoiceLine(text) {
-    if (isMuted || !('speechSynthesis' in window)) return;
-    try {
-      window.speechSynthesis.cancel(); // Stop seisi voice line sebelumnya
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'id-ID'; // Bahasa Indonesia
-      utterance.rate = 1.1; // Kecepatan sedikit lebih tinggi untuk vibe game
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    } catch(e) { console.log('Speech Error:', e); }
-  }
-
-  // 2. BACKGROUND MUSIC SYNTHESIZER (Lounge BGM Chords)
+  // BACKGROUND MUSIC SYNTHESIZER
   function startBGM() {
     if (bgmInterval || isMuted) return;
     try {
@@ -505,7 +483,6 @@
     }
   }
 
-  // Dynamic Web Audio Synthesizer (SFX Efek Suara)
   function playSFX(type, volume = 0.5) {
     if (isMuted) return;
     try {
@@ -559,7 +536,6 @@
   let mySeatIndex = 0;
   let currentRoomStatus = 'WAITING';
 
-  // Mematikan Double-Tap Zoom Safari iOS
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (event) => {
     const now = (new Date()).getTime();
@@ -712,14 +688,6 @@
 
   socket.on('room_state_updated', ({ status, mySeatIndex: seatIdx, dealerSeatIndex, players, isNewDeal }) => {
     mySeatIndex = seatIdx;
-    
-    // TRIGER VOICE LINE SAAT FASE BERUBAH
-    if (currentRoomStatus !== status) {
-      if (status === 'SHOWDOWN') {
-        playVoiceLine('Showdown!');
-      }
-    }
-
     currentRoomStatus = status;
 
     const container = document.getElementById('seats-container');
@@ -750,21 +718,16 @@
       seatDiv.id = `seat-element-${p.seatIndex}`;
 
       let cardsHTML = '';
-      let fxClass = ''; // Efek visual glow kartu
+      let fxClass = '';
 
-      if (p.evalData && (p.isFullyRevealed || visualPos === 0 || status === 'SHOWDOWN')) {
+      // AURA HANYA MUNCUL APABILA KARTU SUDAH DIBUKA (isFullyRevealed / SHOWDOWN)
+      const isCardsOpen = p.isFullyRevealed || status === 'SHOWDOWN';
+
+      if (p.evalData && isCardsOpen) {
         if (p.evalData.isDoubleTwin) {
-          fxClass = 'fx-balak';
-          if (visualPos === 0 && !p.hasAnnouncedSpecial) {
-            playVoiceLine('Balak!');
-            p.hasAnnouncedSpecial = true;
-          }
+          fxClass = 'fx-balak'; // Aura Merah untuk Balak
         } else if (p.evalData.value === 9) {
-          fxClass = 'fx-qiu';
-          if (visualPos === 0 && !p.hasAnnouncedSpecial) {
-            playVoiceLine('Qiu!');
-            p.hasAnnouncedSpecial = true;
-          }
+          fxClass = 'fx-qiu';   // Aura Emas untuk Qiu
         }
       }
 
@@ -871,7 +834,6 @@
     
     if (winners && winners.includes(mySeatIndex)) {
       playSFX('win', 0.6);
-      playVoiceLine('Kamu menang!');
     }
   });
 
