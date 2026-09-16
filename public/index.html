@@ -416,6 +416,7 @@
 <body>
 
 <div class="top-settings-bar">
+  <button class="btn-icon-setting" id="spectator-btn" onclick="toggleSpectatorMode()" title="Mode Penonton" style="width: auto; padding: 0 10px; border-radius: 15px; font-size: 11px; font-weight: bold;">👁️ Nonton</button>
   <button class="btn-icon-setting" id="bgm-btn" onclick="toggleBGM()" title="Toggle BGM">🎵</button>
 </div>
 
@@ -500,6 +501,11 @@
       btn.innerText = '🎵';
       startBGM();
     }
+  }
+  
+  function toggleSpectatorMode() {
+    playSFX('chip', 0.4);
+    socket.emit('toggle_spectator');
   }
 
   function playSFX(type, volume = 0.5) {
@@ -729,6 +735,20 @@
     const isAmIDealer = me && me.isDealer;
     const dealerBtn = document.getElementById('dealer-btn');
     const banner = document.getElementById('info-banner');
+    const me = players.find(p => p.seatIndex === mySeatIndex);
+    const specBtn = document.getElementById('spectator-btn');
+    
+    if (me) {
+      if (me.isSpectator) {
+        specBtn.style.background = '#2ed573';
+        specBtn.style.color = '#000';
+        specBtn.innerText = '🎲 Main';
+      } else {
+        specBtn.style.background = 'rgba(0,0,0,0.8)';
+        specBtn.style.color = '#ffd700';
+        specBtn.innerText = '👁️ Nonton';
+      }
+    }
 
     if (me && me.isSpectator) {
       banner.innerText = "👁️ Mode Penonton (Menunggu Ronde Selanjutnya)";
