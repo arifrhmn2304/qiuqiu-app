@@ -31,6 +31,39 @@
       justify-content: flex-start;
       padding-top: 55px;
     }
+
+    /* BAR KONTROL ATAS DITEMPATKAN BERSIH DI KANAN ATAS (SEPERTI CHAT DI KANAN BAWAH) */
+    .top-controls-bar {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 215, 0, 0.3);
+      padding: 4px 8px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+    }
+
+    .btn-top-control {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid #ffd700;
+      color: #ffd700;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 4px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+    .btn-top-control:active { transform: scale(0.95); }
     
     .table-poker { 
       position: relative; 
@@ -50,10 +83,10 @@
     
     .info-banner { 
       position: absolute; 
-      top: -42px; 
+      top: -45px; 
       left: 50%; 
       transform: translateX(-50%); 
-      background: rgba(0, 0, 0, 0.9); 
+      background: rgba(0, 0, 0, 0.85); 
       border: 1px solid #ffd700; 
       padding: 6px 14px; 
       border-radius: 20px; 
@@ -61,34 +94,10 @@
       font-weight: bold; 
       color: #ffd700; 
       text-align: center; 
-      max-width: 80%; 
+      max-width: 88%; 
       z-index: 10; 
       box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
       white-space: nowrap;
-    }
-
-    .top-settings-bar {
-      position: absolute;
-      top: 12px;
-      right: 15px;
-      z-index: 40;
-      display: flex;
-      gap: 8px;
-    }
-    
-    .btn-icon-setting {
-      background: rgba(0,0,0,0.8);
-      border: 1px solid #ffd700;
-      color: #ffd700;
-      font-size: 16px;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
     }
 
     .seat { position: absolute; width: 110px; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; touch-action: manipulation; }
@@ -415,9 +424,10 @@
 </head>
 <body>
 
-<div class="top-settings-bar">
-  <button class="btn-icon-setting" id="spectator-btn" onclick="toggleSpectatorMode()" title="Mode Penonton" style="width: auto; padding: 0 10px; border-radius: 15px; font-size: 11px; font-weight: bold;">👁️ Nonton</button>
-  <button class="btn-icon-setting" id="bgm-btn" onclick="toggleBGM()" title="Toggle BGM">🎵</button>
+<!-- BAR ATAS TERPISAH DI KANAN ATAS -->
+<div class="top-controls-bar">
+  <button class="btn-top-control" id="spectator-btn" onclick="toggleSpectatorMode()">👁️ Nonton</button>
+  <button class="btn-top-control" id="bgm-btn" onclick="toggleBGM()">🎵</button>
 </div>
 
 <div class="login-overlay" id="login">
@@ -743,7 +753,7 @@
         specBtn.style.color = '#000';
         specBtn.innerText = '🎲 Main';
       } else {
-        specBtn.style.background = 'rgba(0,0,0,0.8)';
+        specBtn.style.background = 'rgba(255, 255, 255, 0.1)';
         specBtn.style.color = '#ffd700';
         specBtn.innerText = '👁️ Nonton';
       }
@@ -753,7 +763,8 @@
       banner.innerText = "👁️ Mode Penonton (Menunggu Ronde Selanjutnya)";
       dealerBtn.style.display = 'none';
     } else if (status === 'WAITING') {
-      if (players.length < 2) banner.innerText = "⏳ Menunggu pemain lain bergabung";
+      const activePlayers = players.filter(p => !p.isSpectator);
+      if (activePlayers.length < 2) banner.innerText = "⏳ Menunggu pemain lain bergabung";
       dealerBtn.style.display = 'none';
     } else if (status === 'SHOWDOWN') {
       if (isAmIDealer) {
