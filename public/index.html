@@ -67,7 +67,6 @@
       white-space: nowrap;
     }
 
-    /* Top Controls (BGM & Mute) */
     .top-settings-bar {
       position: absolute;
       top: 10px;
@@ -98,6 +97,29 @@
     .seat-3 { top: 15px; left: 50%; transform: translateX(-50%); }
     .seat-4 { top: 15%; right: 2px; }
     .seat-5 { bottom: 20%; right: 2px; }
+
+    /* KURSI KOSONG (KLIK UNTUK PINDAH) */
+    .empty-seat-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: all 0.2s;
+    }
+    .empty-seat-btn:hover, .empty-seat-btn:active {
+      background: rgba(46, 213, 115, 0.6);
+      border-color: #2ed573;
+      transform: scale(1.1);
+    }
 
     .player-header { display: flex; flex-direction: column; align-items: center; z-index: 5; margin-bottom: 2px; position: relative; }
     .player-name { 
@@ -214,7 +236,6 @@
     }
     .domino-card.covered { background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; }
 
-    /* EFEK VISUAL: EMAS (QIU QIU) & MERAH (BALAK) */
     .fx-qiu {
       box-shadow: 0 0 15px #ffd700, 0 0 25px #ff8c00 !important;
       border: 2px solid #ffd700 !important;
@@ -305,7 +326,6 @@
       font-family: 'Impact', 'Segoe UI', sans-serif;
     }
 
-    /* Kontainer Bawah Terintegrasi (Chat & Emote) */
     .bottom-controls-bar { 
       position: fixed; 
       bottom: 12px; 
@@ -438,16 +458,15 @@
   let isMuted = false;
   let bgmInterval = null;
 
-  // BACKGROUND MUSIC SYNTHESIZER
   function startBGM() {
     if (bgmInterval || isMuted) return;
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       const chords = [
-        [261.63, 329.63, 392.00], // C Major
-        [220.00, 261.63, 329.63], // A Minor
-        [174.61, 220.00, 261.63], // F Major
-        [196.00, 246.94, 293.66]  // G Major
+        [261.63, 329.63, 392.00], 
+        [220.00, 261.63, 329.63], 
+        [174.61, 220.00, 261.63], 
+        [196.00, 246.94, 293.66]  
       ];
       let step = 0;
 
@@ -551,6 +570,11 @@
     playSFX('chip', 0.5);
     socket.emit('dealer_continue');
     document.getElementById('dealer-btn').style.display = 'none';
+  }
+
+  function switchSeat(targetSeatIndex) {
+    playSFX('chip', 0.4);
+    socket.emit('switch_seat', { targetSeatIndex });
   }
 
   function animateCardsFromDealer(dealerSeatIdx, players, myIdx) {
@@ -669,7 +693,12 @@
       return;
     }
 
-    banner.innerText = `👆 Geser penutup kartumu untuk melihat nilai!`;
+    const me = playersRef ? playersRef.find(p => p.seatIndex === mySeatIndex) : null;
+    if (me && me.isSpectator) {
+      banner.innerText = `👁️ Mode Penonton (Menunggu Ronde Selanjutnya)`;
+    } else {
+      banner.innerText = `👆 Geser penutup kartumu untuk melihat nilai!`;
+    }
 
     const fullDash = 126;
     const progress = (sec / maxSec);
@@ -686,9 +715,12 @@
     });
   });
 
+  let playersRef = [];
+
   socket.on('room_state_updated', ({ status, mySeatIndex: seatIdx, dealerSeatIndex, players, isNewDeal }) => {
     mySeatIndex = seatIdx;
     currentRoomStatus = status;
+    playersRef = players;
 
     const container = document.getElementById('seats-container');
     container.innerHTML = '';
@@ -698,7 +730,10 @@
     const dealerBtn = document.getElementById('dealer-btn');
     const banner = document.getElementById('info-banner');
 
-    if (status === 'WAITING') {
+    if (me && me.isSpectator) {
+      banner.innerText = "👁️ Mode Penonton (Menunggu Ronde Selanjutnya)";
+      dealerBtn.style.display = 'none';
+    } else if (status === 'WAITING') {
       if (players.length < 2) banner.innerText = "⏳ Menunggu pemain lain bergabung";
       dealerBtn.style.display = 'none';
     } else if (status === 'SHOWDOWN') {
@@ -711,86 +746,99 @@
       }
     }
 
-    players.forEach(p => {
-      const visualPos = (p.seatIndex - mySeatIndex + 6) % 6;
+    // RENDER 6 POSISI KURSI MEJA
+    for (let seatIdx = 0; seatIdx < 6; seatIdx++) {
+      const visualPos = (seatIdx - mySeatIndex + 6) % 6;
       const seatDiv = document.createElement('div');
       seatDiv.className = `seat seat-${visualPos}`;
-      seatDiv.id = `seat-element-${p.seatIndex}`;
+      seatDiv.id = `seat-element-${seatIdx}`;
 
-      let cardsHTML = '';
-      let fxClass = '';
+      const p = players.find(player => player.seatIndex === seatIdx);
 
-      // AURA HANYA MUNCUL APABILA KARTU SUDAH DIBUKA (isFullyRevealed / SHOWDOWN)
-      const isCardsOpen = p.isFullyRevealed || status === 'SHOWDOWN';
+      if (p) {
+        // ADA PEMAIN DI KURSI INI
+        let cardsHTML = '';
+        let fxClass = '';
 
-      if (p.evalData && isCardsOpen) {
-        if (p.evalData.isDoubleTwin) {
-          fxClass = 'fx-balak'; // Aura Merah untuk Balak
-        } else if (p.evalData.value === 9) {
-          fxClass = 'fx-qiu';   // Aura Emas untuk Qiu
-        }
-      }
+        const isCardsOpen = p.isFullyRevealed || status === 'SHOWDOWN';
 
-      if (p.isSpectator) cardsHTML = `<div class="spectator-tag">(Menonton)</div>`;
-      else if (p.hasHand) {
-        const hiddenClass = isNewDeal ? 'hidden-deal' : '';
-        cardsHTML = `<div class="cards-row ${hiddenClass}" id="cards-row-${p.seatIndex}">`;
-        
-        [0, 1].forEach(i => {
-          const isCardRev = (p.revealedCards && p.revealedCards[i]) || p.isFullyRevealed;
-
-          if (p.hand && (visualPos === 0 || p.isFullyRevealed || status === 'SHOWDOWN')) {
-            cardsHTML += `
-              <div class="card-slot">
-                <div class="domino-card ${fxClass}">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
-                ${visualPos === 0 ? `<div class="card-cover ${isCardRev ? 'revealed' : ''}" id="cover-${i}"></div>` : ''}
-              </div>`;
-          } else {
-            cardsHTML += `<div class="card-slot"><div class="domino-card covered"></div></div>`;
+        if (p.evalData && isCardsOpen) {
+          if (p.evalData.isDoubleTwin) {
+            fxClass = 'fx-balak';
+          } else if (p.evalData.value === 9) {
+            fxClass = 'fx-qiu';
           }
-        });
-        cardsHTML += `</div>`;
-      }
+        }
 
-      let scoreText = '';
-      const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
-
-      if (!p.isSpectator && (isBothCardsRevealed || status === 'SHOWDOWN') && p.evalData) {
-        scoreText = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
-      }
-
-      const dealerCoin = p.isDealer ? `<div class="dealer-coin" title="Bandar">B</div>` : '';
-      const streakBadge = (p.winStreak >= 2) ? `<div class="streak-badge">🔥${p.winStreak}</div>` : '';
-
-      seatDiv.innerHTML = `
-        <div class="player-header">
-          <div class="player-name">${p.name}</div>
-          <div class="avatar-wrapper">
-            <svg class="timer-ring-svg" viewBox="0 0 44 44">
-              <circle class="timer-ring-bg" cx="22" cy="22" r="20"></circle>
-              <circle class="timer-ring-bar" cx="22" cy="22" r="20"></circle>
-            </svg>
-            <div class="avatar-badge" style="background:${p.color}">${p.avatar}</div>
-            ${dealerCoin}
-            ${streakBadge}
-          </div>
-        </div>
-        ${cardsHTML}
-        <div class="score-label">${scoreText}</div>
-      `;
-      container.appendChild(seatDiv);
-
-      if (visualPos === 0 && p.hand && !p.isSpectator) {
-        setTimeout(() => {
+        if (p.isSpectator) {
+          cardsHTML = `<div class="spectator-tag">(Menonton)</div>`;
+        } else if (p.hasHand) {
+          const hiddenClass = isNewDeal ? 'hidden-deal' : '';
+          cardsHTML = `<div class="cards-row ${hiddenClass}" id="cards-row-${p.seatIndex}">`;
+          
           [0, 1].forEach(i => {
-            if (!p.revealedCards[i]) {
-              const el = document.getElementById(`cover-${i}`);
-              if (el) enableFreeDrag(el, i);
+            const isCardRev = (p.revealedCards && p.revealedCards[i]) || p.isFullyRevealed;
+
+            // Kartu terbuka jika milik sendiri ATAU kartu pemain sudah dibuka penuh oleh lawan
+            if (p.hand && (visualPos === 0 || p.isFullyRevealed || status === 'SHOWDOWN')) {
+              cardsHTML += `
+                <div class="card-slot">
+                  <div class="domino-card ${fxClass}">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
+                  ${visualPos === 0 && !p.isSpectator ? `<div class="card-cover ${isCardRev ? 'revealed' : ''}" id="cover-${i}"></div>` : ''}
+                </div>`;
+            } else {
+              cardsHTML += `<div class="card-slot"><div class="domino-card covered"></div></div>`;
             }
           });
-        }, 50);
+          cardsHTML += `</div>`;
+        }
+
+        let scoreText = '';
+        const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
+
+        if (!p.isSpectator && (isBothCardsRevealed || status === 'SHOWDOWN') && p.evalData) {
+          scoreText = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
+        }
+
+        const dealerCoin = p.isDealer ? `<div class="dealer-coin" title="Bandar">B</div>` : '';
+        const streakBadge = (p.winStreak >= 2) ? `<div class="streak-badge">🔥${p.winStreak}</div>` : '';
+
+        seatDiv.innerHTML = `
+          <div class="player-header">
+            <div class="player-name">${p.name}</div>
+            <div class="avatar-wrapper">
+              <svg class="timer-ring-svg" viewBox="0 0 44 44">
+                <circle class="timer-ring-bg" cx="22" cy="22" r="20"></circle>
+                <circle class="timer-ring-bar" cx="22" cy="22" r="20"></circle>
+              </svg>
+              <div class="avatar-badge" style="background:${p.color}">${p.avatar}</div>
+              ${dealerCoin}
+              ${streakBadge}
+            </div>
+          </div>
+          ${cardsHTML}
+          <div class="score-label">${scoreText}</div>
+        `;
+
+        if (visualPos === 0 && p.hand && !p.isSpectator) {
+          setTimeout(() => {
+            [0, 1].forEach(i => {
+              if (!p.revealedCards[i]) {
+                const el = document.getElementById(`cover-${i}`);
+                if (el) enableFreeDrag(el, i);
+              }
+            });
+          }, 50);
+        }
+      } else {
+        // KURSI KOSONG -> FITUR BEBAS PINDAH KURSI
+        seatDiv.innerHTML = `
+          <button class="empty-seat-btn" onclick="switchSeat(${seatIdx})">Duduk</button>
+        `;
       }
-    });
+
+      container.appendChild(seatDiv);
+    }
 
     if (isNewDeal) {
       setTimeout(() => animateCardsFromDealer(dealerSeatIndex, players, mySeatIndex), 50);
