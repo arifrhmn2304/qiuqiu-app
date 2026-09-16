@@ -73,27 +73,6 @@ io.on('connection', (socket) => {
         dealerIndex: 0,
         autoStartTimer: null,
         turnTimer: null
-
-  // FITUR TOGGLE MODE PENONTON
-  socket.on('toggle_spectator', () => {
-    const { player, room } = getPlayerBySocketId(socket.id);
-    if (!player || !room) return;
-
-    // HANYA BISA UBAH STATUS SAAT WAITING / SHOWDOWN
-    if (room.status !== 'WAITING' && room.status !== 'SHOWDOWN') {
-      return socket.emit('error_msg', 'Ubah mode penonton hanya bisa saat ronde selesai!');
-    }
-
-    player.isSpectator = !player.isSpectator;
-    player.hand = [];
-    player.revealedCards = [false, false];
-    player.isFullyRevealed = false;
-
-    const statusText = player.isSpectator ? 'menjadi Penonton 👁️' : 'siap Bermain 🎲';
-    io.to(room.roomId).emit('sys_message', `${player.name} sekarang ${statusText}`);
-    
-    broadcastRoomState(room.roomId);
-        });
       };
     }
 
@@ -126,12 +105,31 @@ io.on('connection', (socket) => {
     checkAutoStart(room);
   });
 
-  // PERPINDAHAN KURSI BEBAS (Dengan Pengunci Status Game)
+  // FITUR TOGGLE MODE PENONTON (Posisi Yang Benar)
+  socket.on('toggle_spectator', () => {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (!player || !room) return;
+
+    if (room.status !== 'WAITING' && room.status !== 'SHOWDOWN') {
+      return socket.emit('error_msg', 'Ubah mode penonton hanya bisa saat ronde selesai!');
+    }
+
+    player.isSpectator = !player.isSpectator;
+    player.hand = [];
+    player.revealedCards = [false, false];
+    player.isFullyRevealed = false;
+
+    const statusText = player.isSpectator ? 'menjadi Penonton 👁️' : 'siap Bermain 🎲';
+    io.to(room.roomId).emit('sys_message', `${player.name} sekarang ${statusText}`);
+    
+    broadcastRoomState(room.roomId);
+  });
+
+  // PERPINDAHAN KURSI BEBAS
   socket.on('switch_seat', ({ targetSeatIndex }) => {
     const { player, room } = getPlayerBySocketId(socket.id);
     if (!player || !room) return;
 
-    // KUNCI: Pindah kursi HANYA BISA saat WAITING atau SHOWDOWN (Sebelum dealer membagikan ronde baru)
     if (room.status !== 'WAITING' && room.status !== 'SHOWDOWN') {
       return socket.emit('error_msg', 'Pindah kursi hanya bisa dilakukan saat ronde selesai!');
     }
@@ -141,12 +139,21 @@ io.on('connection', (socket) => {
     const isSeatOccupied = room.players.some(p => p.seatIndex === targetSeatIndex);
     if (isSeatOccupied) return socket.emit('error_msg', 'Kursi tersebut sudah terisi!');
 
-    // Simpan kursi lama untuk notifikasi chat
-    const oldSeat = player.seatIndex;
     player.seatIndex = targetSeatIndex;
 
     io.to(room.roomId).emit('sys_message', `${player.name} berpindah ke Kursi ${targetSeatIndex + 1}.`);
     broadcastRoomState(room.roomId);
+  });
+
+  socket.on('send_chat', ({ message }) => {
+    const { player, room } = getPlayerBySocketId(socket.id);
+    if (!player || !room || !message.trim()) return;
+
+    io.to(room.roomId).emit('new_chat', {
+      sender: player.name,
+      color: player.color,
+      message: message.trim().substring(0, 60)
+    });
   });
 
   socket.on('reveal_single_card', ({ cardIndex }) => {
