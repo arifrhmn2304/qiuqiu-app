@@ -67,6 +67,30 @@
       white-space: nowrap;
     }
 
+    /* Top Controls (BGM & Mute) */
+    .top-settings-bar {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      z-index: 30;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-icon-setting {
+      background: rgba(0,0,0,0.8);
+      border: 1px solid #ffd700;
+      color: #ffd700;
+      font-size: 16px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    }
+
     .seat { position: absolute; width: 110px; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; touch-action: manipulation; }
     .seat-0 { bottom: 15px; left: 50%; transform: translateX(-50%); }
     .seat-1 { bottom: 20%; left: 2px; }
@@ -186,8 +210,30 @@
       box-sizing: border-box;
       touch-action: manipulation;
       -webkit-backface-visibility: hidden;
+      transition: transform 0.2s;
     }
     .domino-card.covered { background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; }
+
+    /* EFEK VISUAL SPESIAL: GOLDEN GLOW (QIU QIU) & LIGHTNING (BALAK) */
+    .fx-qiu {
+      box-shadow: 0 0 15px #ffd700, 0 0 25px #ff8c00 !important;
+      border: 2px solid #ffd700 !important;
+      animation: pulseGold 0.8s infinite alternate ease-in-out;
+    }
+    .fx-balak {
+      box-shadow: 0 0 15px #00d2d3, 0 0 25px #54a0ff !important;
+      border: 2px solid #00d2d3 !important;
+      animation: lightningShock 0.4s infinite alternate ease-in-out;
+    }
+    @keyframes pulseGold {
+      0% { transform: scale(1); box-shadow: 0 0 10px #ffd700; }
+      100% { transform: scale(1.06); box-shadow: 0 0 22px #ff8c00; }
+    }
+    @keyframes lightningShock {
+      0% { filter: brightness(1); transform: rotate(0deg); }
+      50% { filter: brightness(1.6); transform: rotate(1deg); }
+      100% { filter: brightness(1.2); transform: rotate(-1deg); }
+    }
 
     .card-cover { position: absolute; top: 0; left: 0; width: 42px; height: 74px; background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; border-radius: 6px; cursor: grab; z-index: 3; transition: transform 0.1s ease-out; touch-action: none; }
     .card-cover.revealed { display: none; }
@@ -283,14 +329,15 @@
       font-family: 'Impact', 'Segoe UI', sans-serif;
     }
 
+    /* Live Chat CSS */
     .chat-container {
       position: absolute;
       bottom: 60px;
       left: 10px;
-      width: 220px;
-      height: 140px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      width: 200px;
+      height: 130px;
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid rgba(255, 215, 0, 0.3);
       border-radius: 10px;
       display: flex;
       flex-direction: column;
@@ -303,13 +350,13 @@
       font-size: 11px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
-.chat-msg { color: #fff; word-break: break-word; }
-.sys-msg { color: #ffd700; font-style: italic; font-size: 10px; }
-.chat-input-row { display: flex; gap: 4px; margin-top: 4px; }
-.chat-input-row input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11px; }
-.chat-input-row button { background: #2ed573; border: none; color: #000; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+    .chat-msg { color: #fff; word-break: break-word; }
+    .sys-msg { color: #ffd700; font-style: italic; font-size: 10px; }
+    .chat-input-row { display: flex; gap: 4px; margin-top: 4px; }
+    .chat-input-row input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11px; }
+    .chat-input-row button { background: #2ed573; border: none; color: #000; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
 
     @keyframes pulseBtnCenter { 
       0% { transform: translate(-50%, -50%) scale(0.95); } 
@@ -325,6 +372,10 @@
   </style>
 </head>
 <body>
+
+<div class="top-settings-bar">
+  <button class="btn-icon-setting" id="bgm-btn" onclick="toggleBGM()" title="Toggle BGM">🎵</button>
+</div>
 
 <div class="login-overlay" id="login">
   <h2>MEJA QIU QIU SANUR</h2>
@@ -343,6 +394,14 @@
 
   <button class="btn-dealer-next" id="dealer-btn" style="display:none;" onclick="dealerNextRound()">LANJUT</button>
 
+  <div class="chat-container">
+    <div class="chat-messages" id="chat-box"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
+      <button onclick="sendChat()">Kirim</button>
+    </div>
+  </div>
+
   <div class="bottom-controls-bar">
     <div class="emote-bar">
       <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
@@ -353,22 +412,77 @@
   </div>
 </div>
 
-  <div class="chat-container">
-  <div class="chat-messages" id="chat-box"></div>
-  <div class="chat-input-row">
-    <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
-    <button onclick="sendChat()">Kirim</button>
-  </div>
-</div>
-
 <script>
-  // Dynamic Web Audio Synthesizer (SFX Tanpa File MP3 Luar)
+  let isMuted = false;
+  let bgmOscillator = null;
+  let bgmGain = null;
+  let bgmInterval = null;
+
+  // 1. VOICE LINE ANNOUNCER (Web Speech Synthesis)
+  function playVoiceLine(text) {
+    if (isMuted || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel(); // Stop seisi voice line sebelumnya
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID'; // Bahasa Indonesia
+      utterance.rate = 1.1; // Kecepatan sedikit lebih tinggi untuk vibe game
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch(e) { console.log('Speech Error:', e); }
+  }
+
+  // 2. BACKGROUND MUSIC SYNTHESIZER (Lounge BGM Chords)
+  function startBGM() {
+    if (bgmInterval || isMuted) return;
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const chords = [
+        [261.63, 329.63, 392.00], // C Major
+        [220.00, 261.63, 329.63], // A Minor
+        [174.61, 220.00, 261.63], // F Major
+        [196.00, 246.94, 293.66]  // G Major
+      ];
+      let step = 0;
+
+      bgmInterval = setInterval(() => {
+        if (isMuted) return;
+        const currentChord = chords[step % chords.length];
+        currentChord.forEach(freq => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.015, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 1.8);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 1.8);
+        });
+        step++;
+      }, 2000);
+    } catch(e) { console.log('BGM Error:', e); }
+  }
+
+  function toggleBGM() {
+    isMuted = !isMuted;
+    const btn = document.getElementById('bgm-btn');
+    if (isMuted) {
+      btn.innerText = '🔇';
+      if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+    } else {
+      btn.innerText = '🎵';
+      startBGM();
+    }
+  }
+
+  // Dynamic Web Audio Synthesizer (SFX Efek Suara)
   function playSFX(type, volume = 0.5) {
+    if (isMuted) return;
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
       
       if (type === 'shuffle') {
-        // Suara Pembagian / Pengocokan Kartu (Swosh Halus)
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'triangle';
@@ -381,7 +495,6 @@
         osc.start();
         osc.stop(ctx.currentTime + 0.15);
       } else if (type === 'chip') {
-        // Suara Taruhan / Emote / Chip Lay (Crispy & Heavy)
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
@@ -393,8 +506,7 @@
         gain.connect(ctx.destination);
         osc.start();
         osc.stop(ctx.currentTime + 0.08);
-      } else if (type === 'win') {
-        // Denting Emas / Chime Pemenang Ronde (Elegan)
+      } else if (type === 'qiu' || type === 'win') {
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -414,9 +526,7 @@
     }
   }
 
-  const socket = io({
-    transports: ['websocket', 'polling']
-  });
+  const socket = io({ transports: ['websocket', 'polling'] });
   let mySeatIndex = 0;
   let currentRoomStatus = 'WAITING';
 
@@ -424,9 +534,7 @@
   let lastTouchEnd = 0;
   document.addEventListener('touchend', (event) => {
     const now = (new Date()).getTime();
-    if (now - lastTouchEnd <= 300) {
-      event.preventDefault();
-    }
+    if (now - lastTouchEnd <= 300) event.preventDefault();
     lastTouchEnd = now;
   }, false);
 
@@ -441,8 +549,7 @@
   }
 
   function animateCardsFromDealer(dealerSeatIdx, players, myIdx) {
-    playSFX('shuffle', 0.5); // Mainkan SFX kocok kartu
-
+    playSFX('shuffle', 0.5);
     const dealerElem = document.getElementById(`seat-element-${dealerSeatIdx}`);
     if (!dealerElem) return;
 
@@ -503,6 +610,7 @@
   }
 
   function joinGame() {
+    startBGM();
     playSFX('chip', 0.6);
     let name = document.getElementById('pName').value.trim() || 'Player_' + Math.floor(Math.random() * 99);
     socket.emit('join_room', { playerName: name });
@@ -513,6 +621,33 @@
     playSFX('chip', 0.4);
     socket.emit('send_reaction', { type: 'emote', content });
   }
+
+  function sendChat() {
+    const input = document.getElementById('chat-input');
+    const msg = input.value.trim();
+    if (msg) {
+      socket.emit('send_chat', { message: msg });
+      input.value = '';
+    }
+  }
+
+  socket.on('new_chat', ({ sender, color, message }) => {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<b style="color:${color}">${sender}:</b> ${message}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  });
+
+  socket.on('sys_message', (msg) => {
+    const box = document.getElementById('chat-box');
+    const div = document.createElement('div');
+    div.className = 'sys-msg';
+    div.innerText = `🔔 ${msg}`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  });
 
   socket.on('timer_sync', ({ sec, maxSec }) => {
     const rings = document.querySelectorAll('.timer-ring-svg');
@@ -548,6 +683,14 @@
 
   socket.on('room_state_updated', ({ status, mySeatIndex: seatIdx, dealerSeatIndex, players, isNewDeal }) => {
     mySeatIndex = seatIdx;
+    
+    // TRIGER VOICE LINE SAAT FASE BERUBAH
+    if (currentRoomStatus !== status) {
+      if (status === 'SHOWDOWN') {
+        playVoiceLine('Showdown!');
+      }
+    }
+
     currentRoomStatus = status;
 
     const container = document.getElementById('seats-container');
@@ -559,9 +702,7 @@
     const banner = document.getElementById('info-banner');
 
     if (status === 'WAITING') {
-      if (players.length < 2) {
-        banner.innerText = "⏳ Menunggu pemain lain bergabung";
-      }
+      if (players.length < 2) banner.innerText = "⏳ Menunggu pemain lain bergabung";
       dealerBtn.style.display = 'none';
     } else if (status === 'SHOWDOWN') {
       if (isAmIDealer) {
@@ -580,26 +721,39 @@
       seatDiv.id = `seat-element-${p.seatIndex}`;
 
       let cardsHTML = '';
+      let fxClass = ''; // Efek visual glow kartu
+
+      if (p.evalData && (p.isFullyRevealed || visualPos === 0 || status === 'SHOWDOWN')) {
+        if (p.evalData.isDoubleTwin) {
+          fxClass = 'fx-balak';
+          if (visualPos === 0 && !p.hasAnnouncedSpecial) {
+            playVoiceLine('Balak!');
+            p.hasAnnouncedSpecial = true;
+          }
+        } else if (p.evalData.value === 9) {
+          fxClass = 'fx-qiu';
+          if (visualPos === 0 && !p.hasAnnouncedSpecial) {
+            playVoiceLine('Qiu!');
+            p.hasAnnouncedSpecial = true;
+          }
+        }
+      }
+
       if (p.isSpectator) cardsHTML = `<div class="spectator-tag">(Menonton)</div>`;
       else if (p.hasHand) {
         const hiddenClass = isNewDeal ? 'hidden-deal' : '';
         cardsHTML = `<div class="cards-row ${hiddenClass}" id="cards-row-${p.seatIndex}">`;
         
         [0, 1].forEach(i => {
-          // Kartu terbuka jika: 
-          // 1. Kartu itu milik kita sendiri & sudah di-reveal, ATAU
-          // 2. Pemain tersebut sudah meng-ungkap kedua kartunya (fully revealed)
           const isCardRev = (p.revealedCards && p.revealedCards[i]) || p.isFullyRevealed;
 
-          // Jika ada data p.hand DAN (posisi kita sendiri ATAU pemain tersebut sudah buka semua kartunya)
-          if (p.hand && (visualPos === 0 || p.isFullyRevealed)) {
+          if (p.hand && (visualPos === 0 || p.isFullyRevealed || status === 'SHOWDOWN')) {
             cardsHTML += `
               <div class="card-slot">
-                <div class="domino-card">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
+                <div class="domino-card ${fxClass}">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
                 ${visualPos === 0 ? `<div class="card-cover ${isCardRev ? 'revealed' : ''}" id="cover-${i}"></div>` : ''}
               </div>`;
           } else {
-            // Jika kartu pemain lain belum dibuka penuh, tampilkan penutup kartu (covered)
             cardsHTML += `<div class="card-slot"><div class="domino-card covered"></div></div>`;
           }
         });
@@ -609,7 +763,7 @@
       let scoreText = '';
       const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
 
-      if (!p.isSpectator && isBothCardsRevealed && p.evalData) {
+      if (!p.isSpectator && (isBothCardsRevealed || status === 'SHOWDOWN') && p.evalData) {
         scoreText = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
       }
 
@@ -671,33 +825,6 @@
     el.addEventListener('touchstart', onStart); window.addEventListener('touchmove', onMove); window.addEventListener('touchend', onEnd);
   }
 
-  function sendChat() {
-    const input = document.getElementById('chat-input');
-    const msg = input.value.trim();
-    if (msg) {
-      socket.emit('send_chat', { message: msg });
-      input.value = '';
-    }
-  }
-  
-  socket.on('new_chat', ({ sender, color, message }) => {
-    const box = document.getElementById('chat-box');
-    const div = document.createElement('div');
-    div.className = 'chat-msg';
-    div.innerHTML = `<b style="color:${color}">${sender}:</b> ${message}`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-  });
-  
-  socket.on('sys_message', (msg) => {
-    const box = document.getElementById('chat-box');
-    const div = document.createElement('div');
-    div.className = 'sys-msg';
-    div.innerText = `🔔 ${msg}`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-  });
-
   socket.on('broadcast_reaction', ({ seatIndex, content }) => {
     const seatEl = document.getElementById(`seat-element-${seatIndex}`);
     if (seatEl) {
@@ -713,9 +840,9 @@
     const banner = document.getElementById('info-banner');
     banner.innerText = `Menunggu bandar`;
     
-    // Mainkan SFX Menang jika kita menang ronde
     if (winners && winners.includes(mySeatIndex)) {
       playSFX('win', 0.6);
+      playVoiceLine('Kamu menang!');
     }
   });
 
