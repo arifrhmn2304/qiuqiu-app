@@ -255,26 +255,32 @@
     .score-label { font-size: 12px; font-weight: bold; color: #ffd700; margin-top: 1px; min-height: 16px; z-index: 4; text-shadow: 0 1px 3px #000; }
 
     .bottom-controls-bar { 
-      position: absolute; 
-      bottom: -60px; 
-      left: 0; 
-      right: 0; 
-      display: flex; 
-      justify-content: center; 
-      z-index: 15; 
-    }
+        position: fixed; 
+        bottom: 12px; 
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex; 
+        align-items: center;
+        gap: 10px;
+        z-index: 35;
+        width: 95vw;
+        max-width: 420px;
+        justify-content: space-between;
+        pointer-events: none; /* Supaya klik di sela-sela tombol tembus ke meja */
+      }
     
     .emote-bar { 
+      pointer-events: auto;
       display: flex; 
-      gap: 14px; 
+      gap: 8px; 
       background: rgba(0,0,0,0.85); 
-      padding: 6px 16px; 
-      border-radius: 20px; 
+      padding: 6px 10px; 
+      border-radius: 16px; 
       border: 1px solid #444; 
       box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
     }
     
-    .emote-btn { font-size: 20px; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+    .emote-btn { font-size: 18px; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
     .emote-btn:active { transform: scale(1.3); }
 
     .btn-dealer-next { 
@@ -331,34 +337,50 @@
 
     /* Live Chat CSS */
     .chat-container {
-      position: fixed;
-      bottom: 75px;
-      left: 12px;
-      width: 180px;
-      height: 120px;
+      pointer-events: auto;
+      width: 170px;
+      height: 100px;
       background: rgba(0, 0, 0, 0.85);
-      border: 1px solid rgba(255, 215, 0, 0.4);
+      border: 1px solid rgba(255, 215, 0, 0.3);
       border-radius: 10px;
       display: flex;
       flex-direction: column;
-      z-index: 40; /* Ditingkatkan agar berada di atas layer dasar tapi tidak menutupi overlay */
-      padding: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
-      pointer-events: auto;
+      padding: 5px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
     }
+    
     .chat-messages {
       flex: 1;
       overflow-y: auto;
-      font-size: 11px;
+      font-size: 10px;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 2px;
     }
-    .chat-msg { color: #fff; word-break: break-word; }
-    .sys-msg { color: #ffd700; font-style: italic; font-size: 10px; }
-    .chat-input-row { display: flex; gap: 4px; margin-top: 4px; }
-    .chat-input-row input { flex: 1; background: #222; border: 1px solid #444; color: #fff; padding: 4px 6px; border-radius: 4px; font-size: 11px; }
-    .chat-input-row button { background: #2ed573; border: none; color: #000; font-weight: bold; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; }
+    .chat-msg { color: #fff; word-break: break-word; line-height: 1.2; }
+    .sys-msg { color: #ffd700; font-style: italic; font-size: 9px; }
+    .chat-input-row { display: flex; gap: 3px; margin-top: 3px; }
+    .chat-input-row input { 
+      flex: 1; 
+      background: #222; 
+      border: 1px solid #444; 
+      color: #fff; 
+      padding: 3px 5px; 
+      border-radius: 4px; 
+      font-size: 10px; 
+    }
+    .chat-input-row button { 
+      background: #2ed573; 
+      border: none; 
+      color: #000; 
+      font-weight: bold; 
+      padding: 3px 6px; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-size: 9px; 
+    }
+
+    
 
     @keyframes pulseBtnCenter { 
       0% { transform: translate(-50%, -50%) scale(0.95); } 
@@ -396,7 +418,16 @@
 
   <button class="btn-dealer-next" id="dealer-btn" style="display:none;" onclick="dealerNextRound()">LANJUT</button>
 
+  <!-- BAR KONTROL BAWAH (Chat di Kiri, Emote di Kanan) -->
   <div class="bottom-controls-bar">
+    <div class="chat-container">
+      <div class="chat-messages" id="chat-box"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chat-input" placeholder="Pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
+        <button onclick="sendChat()">Kirim</button>
+      </div>
+    </div>
+
     <div class="emote-bar">
       <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
       <span class="emote-btn" onclick="sendEmote('🔥')">🔥</span>
@@ -404,15 +435,9 @@
       <span class="emote-btn" onclick="sendEmote('💩')">💩</span>
     </div>
   </div>
-</div>
 
-<div class="chat-container">
-  <div class="chat-messages" id="chat-box"></div>
-  <div class="chat-input-row">
-    <input type="text" id="chat-input" placeholder="Ketik pesan..." maxlength="60" onkeydown="if(event.key==='Enter') sendChat()">
-    <button onclick="sendChat()">Kirim</button>
-  </div>
-</div>
+</body>
+</html>
 
 </body>
 
