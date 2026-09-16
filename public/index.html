@@ -272,16 +272,16 @@
     }
 
     .table-logo-text {
-  font-size: 20px; /* Ukuran font disesuaikan agar pas di layar HP sempit */
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #ffd700;
-  white-space: nowrap; /* Memaksa teks tetap 1 baris, tidak akan turun ke bawah */
-  text-shadow: 
-    1px 1px 2px rgba(0,0,0,0.9),
-    -1px -1px 2px rgba(255,255,255,0.2);
-  font-family: 'Impact', 'Segoe UI', sans-serif;
-}
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: #ffd700;
+      white-space: nowrap;
+      text-shadow: 
+        1px 1px 2px rgba(0,0,0,0.9),
+        -1px -1px 2px rgba(255,255,255,0.2);
+      font-family: 'Impact', 'Segoe UI', sans-serif;
+    }
 
     @keyframes pulseBtnCenter { 
       0% { transform: translate(-50%, -50%) scale(0.95); } 
@@ -297,11 +297,6 @@
   </style>
 </head>
 <body>
-
-    <!-- Audio Elements (Gunakan MP3 berdurasi pendek & lembut) -->
-<audio id="sfx-shuffle" src="https://assets.mixkit.co/active_storage/sfx/2070/2070-preview.mp3" preload="auto"></audio>
-<audio id="sfx-chip" src="https://assets.mixkit.co/active_storage/sfx/2004/2004-preview.mp3" preload="auto"></audio>
-<audio id="sfx-win" src="https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3" preload="auto"></audio>
 
 <div class="login-overlay" id="login">
   <h2>MEJA QIU QIU FREE BET</h2>
@@ -331,6 +326,58 @@
 </div>
 
 <script>
+  // Dynamic Web Audio Synthesizer (SFX Tanpa File MP3 Luar)
+  function playSFX(type, volume = 0.5) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      
+      if (type === 'shuffle') {
+        // Suara Pembagian / Pengocokan Kartu (Swosh Halus)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(volume * 0.4, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } else if (type === 'chip') {
+        // Suara Taruhan / Emote / Chip Lay (Crispy & Heavy)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2400, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(450, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(volume, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.08);
+      } else if (type === 'win') {
+        // Denting Emas / Chime Pemenang Ronde (Elegan)
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);
+          gain.gain.linearRampToValueAtTime(volume * 0.25, ctx.currentTime + i * 0.08 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 0.08);
+          osc.stop(ctx.currentTime + i * 0.08 + 0.4);
+        });
+      }
+    } catch (e) {
+      console.log('Audio Autoplay Blocked:', e);
+    }
+  }
+
   const socket = io({
     transports: ['websocket', 'polling']
   });
@@ -352,11 +399,14 @@
   }
 
   function dealerNextRound() {
+    playSFX('chip', 0.5);
     socket.emit('dealer_continue');
     document.getElementById('dealer-btn').style.display = 'none';
   }
 
   function animateCardsFromDealer(dealerSeatIdx, players, myIdx) {
+    playSFX('shuffle', 0.5); // Mainkan SFX kocok kartu
+
     const dealerElem = document.getElementById(`seat-element-${dealerSeatIdx}`);
     if (!dealerElem) return;
 
@@ -417,12 +467,14 @@
   }
 
   function joinGame() {
+    playSFX('chip', 0.6);
     let name = document.getElementById('pName').value.trim() || 'Player_' + Math.floor(Math.random() * 99);
     socket.emit('join_room', { playerName: name });
     document.getElementById('login').style.display = 'none';
   }
 
   function sendEmote(content) {
+    playSFX('chip', 0.4);
     socket.emit('send_reaction', { type: 'emote', content });
   }
 
@@ -567,6 +619,7 @@
       if (Math.sqrt(currentX * currentX + currentY * currentY) > 35) {
         isDragging = false;
         triggerHaptic();
+        playSFX('shuffle', 0.3);
         socket.emit('reveal_single_card', { cardIndex });
       }
     };
@@ -589,41 +642,14 @@
   socket.on('showdown_results', ({ winners }) => {
     const banner = document.getElementById('info-banner');
     banner.innerText = `Menunggu bandar`;
+    
+    // Mainkan SFX Menang jika kita menang ronde
+    if (winners && winners.includes(mySeatIndex)) {
+      playSFX('win', 0.6);
+    }
   });
-
-  // Sound Effect Manager
-const soundEnabled = true;
-
-function playSFX(soundId, volume = 0.5) {
-  if (!soundEnabled) return;
-  const audio = document.getElementById(soundId);
-  if (audio) {
-    audio.currentTime = 0; // Reset ke awal agar bisa diplay beruntun
-    audio.volume = volume;
-    audio.play().catch(() => {
-      // Browser autoplay policy handler (jika user belum interaksi)
-    });
-  }
-}
 
   socket.on('error_msg', (msg) => alert(msg));
-    // Saat kartu dibagikan oleh server
-  socket.on('dealCards', (data) => {
-    playSFX('sfx-shuffle', 0.4);
-    // Kode pembagian kartu kamu yang lama...
-  });
-  
-  // Saat ada pemain pasang taruhan (Call/Raise)
-  socket.on('playerAction', (data) => {
-    playSFX('sfx-chip', 0.6);
-    // Kode animasi chip kamu...
-  });
-  
-  // Saat pengumuman pemenang ronde
-  socket.on('roundWinner', (data) => {
-    playSFX('sfx-win', 0.5);
-    // Kode efek menang kamu...
-  });
 </script>
 
 </body>
