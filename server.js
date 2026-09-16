@@ -100,7 +100,6 @@ io.on('connection', (socket) => {
     room.players.push(newPlayer);
     socket.join(roomId);
 
-    // HANYA NOTIF PEMAIN BERGABUNG
     io.to(roomId).emit('sys_message', `${pName} bergabung ke meja.`);
     broadcastRoomState(roomId);
     checkAutoStart(room);
@@ -119,7 +118,6 @@ io.on('connection', (socket) => {
     player.revealedCards = [false, false];
     player.isFullyRevealed = false;
     
-    // Jika pemain aktif kurang dari 2, reset ke WAITING
     const activePlayers = room.players.filter(p => !p.isSpectator);
     if (activePlayers.length < 2 && room.status !== 'WAITING') {
       clearRoomTimers(room);
@@ -144,8 +142,6 @@ io.on('connection', (socket) => {
     if (isSeatOccupied) return socket.emit('error_msg', 'Kursi tersebut sudah terisi!');
 
     player.seatIndex = targetSeatIndex;
-    // NOTIFIKASI CHAT TEKS PINDAH KURSI SUDAH DIHAPUS
-
     broadcastRoomState(room.roomId);
   });
 
@@ -210,8 +206,6 @@ io.on('connection', (socket) => {
       const idx = room.players.findIndex(p => p.socketId === socket.id);
       if (idx !== -1) {
         room.players.splice(idx, 1);
-        
-        // HANYA NOTIF PEMAIN KELUAR
         io.to(room.roomId).emit('sys_message', `${pName} keluar dari meja.`);
 
         if (room.players.length === 0) {
@@ -298,7 +292,6 @@ function startNewRound(room) {
   room.status = 'PLAYING';
   const deck = shuffleDeck(DOMINO_DECK);
 
-  // Ganti Bandar ke pemain AKTIF berikutnya yang tidak spectate
   let activeDealerIdx = room.dealerIndex || 0;
   let attempts = 0;
   do {
