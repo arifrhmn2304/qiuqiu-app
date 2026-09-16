@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Game Qiu Qiu Sanur</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Segoe UI', sans-serif; 
+      user-select: none; 
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    html, body { 
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: fixed;
+      touch-action: manipulation;
+      -webkit-text-size-adjust: 100%;
+      background: #1e0707; 
+      color: #fff; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: flex-start;
+      padding-top: 55px;
+    }
+    
+    .table-poker { 
+      position: relative; 
+      width: 95vw; 
+      max-width: 420px; 
+      height: 68vh; 
+      max-height: 540px; 
+      background: #790404; 
+      border: 8px solid #440202; 
+      border-radius: 120px; 
+      box-shadow: inset 0 0 25px #000, 0 8px 30px rgba(0,0,0,0.7); 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+    }
+    
+    .info-banner { 
+      position: absolute; 
+      top: -45px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      background: rgba(0, 0, 0, 0.85); 
+      border: 1px solid #ffd700; 
+      padding: 6px 14px; 
+      border-radius: 20px; 
+      font-size: 11px; 
+      font-weight: bold; 
+      color: #ffd700; 
+      text-align: center; 
+      max-width: 88%; 
+      z-index: 10; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+      white-space: nowrap;
+    }
+
+    .seat { position: absolute; width: 110px; height: 130px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; touch-action: manipulation; }
+    .seat-0 { bottom: 15px; left: 50%; transform: translateX(-50%); }
+    .seat-1 { bottom: 20%; left: 2px; }
+    .seat-2 { top: 15%; left: 2px; }
+    .seat-3 { top: 15px; left: 50%; transform: translateX(-50%); }
+    .seat-4 { top: 15%; right: 2px; }
+    .seat-5 { bottom: 20%; right: 2px; }
+
+    .player-header { display: flex; flex-direction: column; align-items: center; z-index: 5; margin-bottom: 2px; position: relative; }
+    .player-name { 
+      font-size: 10px; 
+      font-weight: bold; 
+      background: rgba(0,0,0,0.9); 
+      padding: 2px 8px; 
+      border-radius: 8px; 
+      color: #adff2f; 
+      text-overflow: ellipsis; 
+      white-space: nowrap; 
+      overflow: hidden; 
+      max-width: 95px; 
+      text-align: center; 
+      border: 1px solid rgba(255,255,255,0.2);
+      z-index: 5;
+    }
+
+    .avatar-wrapper { position: relative; width: 44px; height: 44px; margin-top: -2px; z-index: 6; display: flex; align-items: center; justify-content: center; }
+    .avatar-badge { 
+      width: 34px; 
+      height: 34px; 
+      min-width: 34px;
+      min-height: 34px;
+      flex-shrink: 0; 
+      border-radius: 50%; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 16px; 
+      border: 2px solid #fff; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5); 
+      z-index: 2;
+    }
+
+    .timer-ring-svg {
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      width: 48px;
+      height: 48px;
+      transform: rotate(-90deg);
+      z-index: 1;
+      display: none;
+    }
+    .timer-ring-bg { fill: none; stroke: rgba(255, 255, 255, 0.2); stroke-width: 3.5; }
+    .timer-ring-bar {
+      fill: none;
+      stroke: #2ed573;
+      stroke-width: 3.5;
+      stroke-dasharray: 126;
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.9s linear, stroke 0.3s ease;
+      stroke-linecap: round;
+    }
+    .timer-ring-bar.danger { stroke: #ff4757; }
+
+    .dealer-coin { 
+      position: absolute; 
+      top: 50%; 
+      right: -6px; 
+      transform: translateY(-50%); 
+      background: radial-gradient(circle, #ffe100, #ff8c00); 
+      color: #000; 
+      font-size: 10px; 
+      font-weight: 900; 
+      border-radius: 50%; 
+      width: 18px; 
+      height: 18px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      border: 1.5px solid #fff; 
+      box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+      z-index: 10; 
+    }
+    
+    .streak-badge { 
+      position: absolute; 
+      top: -4px; 
+      left: -6px; 
+      background: #ff4757; 
+      color: #fff; 
+      font-size: 9px; 
+      border-radius: 8px; 
+      padding: 1px 4px; 
+      font-weight: bold; 
+      border: 1px solid #fff; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+      z-index: 10; 
+    }
+
+    .spectator-tag { font-size: 10px; color: #ff4757; font-weight: bold; margin-top: 10px; }
+
+    .cards-row { display: flex; gap: 5px; position: relative; z-index: 2; flex-shrink: 0; margin-top: 2px; }
+    .cards-row.hidden-deal { opacity: 0; }
+    .cards-row.show-deal { opacity: 1; transition: opacity 0.2s ease-in; }
+
+    .card-slot { position: relative; width: 42px; height: 74px; flex-shrink: 0; }
+    .domino-card { 
+      width: 42px; 
+      height: 74px; 
+      flex-shrink: 0; 
+      background: #fff; 
+      border: 1px solid #000; 
+      border-radius: 6px; 
+      display: flex; 
+      flex-direction: column; 
+      padding: 2px;
+      box-sizing: border-box;
+      touch-action: manipulation;
+      -webkit-backface-visibility: hidden;
+    }
+    .domino-card.covered { background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; }
+
+    .card-cover { position: absolute; top: 0; left: 0; width: 42px; height: 74px; background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; border-radius: 6px; cursor: grab; z-index: 3; transition: transform 0.1s ease-out; touch-action: none; }
+    .card-cover.revealed { display: none; }
+
+    .flying-card-anim { position: absolute; width: 42px; height: 74px; background: linear-gradient(135deg, #b22222 25%, #8b0000 25%, #8b0000 50%, #b22222 50%, #b22222 75%, #8b0000 75%); background-size: 8px 8px; border: 1px solid #fff; border-radius: 6px; z-index: 25; transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; }
+
+    .card-half { height: 34px; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 1px; align-items: center; justify-items: center; }
+    .card-divider { 
+      height: 2px; 
+      min-height: 2px;
+      background-color: #cc0000; 
+      margin: 1px 0; 
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+    .dot { width: 5px; height: 5px; background-color: #cc0000; border-radius: 50%; opacity: 0; }
+    .dot.active { opacity: 1; }
+
+    .score-label { font-size: 12px; font-weight: bold; color: #ffd700; margin-top: 1px; min-height: 16px; z-index: 4; text-shadow: 0 1px 3px #000; }
+
+    .bottom-controls-bar { 
+      position: absolute; 
+      bottom: -60px; 
+      left: 0; 
+      right: 0; 
+      display: flex; 
+      justify-content: center; 
+      z-index: 15; 
+    }
+    
+    .emote-bar { 
+      display: flex; 
+      gap: 14px; 
+      background: rgba(0,0,0,0.85); 
+      padding: 6px 16px; 
+      border-radius: 20px; 
+      border: 1px solid #444; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+    }
+    
+    .emote-btn { font-size: 20px; cursor: pointer; transition: transform 0.1s; touch-action: manipulation; }
+    .emote-btn:active { transform: scale(1.3); }
+
+    .btn-dealer-next { 
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #ffd700, #ff8c00); 
+      color: #000; 
+      border: 2px solid #fff; 
+      padding: 10px 22px; 
+      border-radius: 20px; 
+      font-weight: 900; 
+      font-size: 13px; 
+      cursor: pointer; 
+      box-shadow: 0 4px 15px rgba(0,0,0,0.8);
+      z-index: 20;
+      animation: pulseBtnCenter 1.2s infinite alternate;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+
+    .table-logo-watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .table-logo-icon {
+      font-size: 54px;
+      filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.9));
+      margin-bottom: -5px;
+    }
+
+    .table-logo-text {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #ffd700;
+      text-shadow: 
+        1px 1px 2px rgba(0,0,0,0.9),
+        -1px -1px 2px rgba(255,255,255,0.2);
+      font-family: 'Impact', 'Segoe UI', sans-serif;
+    }
+
+    @keyframes pulseBtnCenter { 
+      0% { transform: translate(-50%, -50%) scale(0.95); } 
+      100% { transform: translate(-50%, -50%) scale(1.05); } 
+    }
+
+    .reaction-bubble { position: absolute; top: -25px; background: rgba(0,0,0,0.85); color: #fff; padding: 4px 8px; border-radius: 12px; font-size: 14px; border: 1px solid #ffd700; z-index: 10; animation: floatUp 1.8s ease-out forwards; }
+    @keyframes floatUp { 0% { opacity: 0; transform: translateY(5px) scale(0.7); } 20% { opacity: 1; transform: translateY(-5px) scale(1.1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-25px); } }
+
+    .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 50; }
+    .login-overlay input { padding: 10px 14px; border-radius: 8px; border: none; text-align: center; font-weight: bold; width: 230px; }
+    .login-overlay button { padding: 10px 20px; background: #adff2f; border: none; font-weight: bold; border-radius: 8px; cursor: pointer; font-size: 15px; touch-action: manipulation; }
+  </style>
+</head>
+<body>
+
+<div class="login-overlay" id="login">
+  <h2>MEJA QIU QIU FREE BET</h2>
+  <input type="text" id="pName" placeholder="Nama Kamu (Opsional)">
+  <button onclick="joinGame()">Masuk Meja 🎲</button>
+</div>
+
+<div class="table-poker" id="table-area">
+  <div class="table-logo-watermark">
+    <div class="table-logo-icon">🀞</div>
+    <div class="table-logo-text">SANUR QIU QIU</div>
+  </div>
+  <div class="info-banner" id="info-banner">Menunggu pemain lain</div>
+  
+  <div id="seats-container"></div>
+
+  <button class="btn-dealer-next" id="dealer-btn" style="display:none;" onclick="dealerNextRound()">LANJUT</button>
+
+  <div class="bottom-controls-bar">
+    <div class="emote-bar">
+      <span class="emote-btn" onclick="sendEmote('😂')">😂</span>
+      <span class="emote-btn" onclick="sendEmote('🔥')">🔥</span>
+      <span class="emote-btn" onclick="sendEmote('😎')">😎</span>
+      <span class="emote-btn" onclick="sendEmote('💩')">💩</span>
+    </div>
+  </div>
+</div>
+
+<script>
+  const socket = io({
+    transports: ['websocket', 'polling']
+  });
+  let mySeatIndex = 0;
+  let currentRoomStatus = 'WAITING';
+
+  // Mematikan Double-Tap Zoom Safari iOS
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', (event) => {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, false);
+
+  function triggerHaptic() {
+    if ('vibrate' in navigator) navigator.vibrate(40);
+  }
+
+  function dealerNextRound() {
+    socket.emit('dealer_continue');
+    document.getElementById('dealer-btn').style.display = 'none';
+  }
+
+  function animateCardsFromDealer(dealerSeatIdx, players, myIdx) {
+    const dealerElem = document.getElementById(`seat-element-${dealerSeatIdx}`);
+    if (!dealerElem) return;
+
+    const dRect = dealerElem.getBoundingClientRect();
+    const tRect = document.getElementById('table-area').getBoundingClientRect();
+
+    const startX = dRect.left - tRect.left + dRect.width / 2 - 21;
+    const startY = dRect.top - tRect.top + dRect.height / 2 - 37;
+
+    let cardCount = 0;
+
+    [0, 1].forEach((cardRound) => {
+      players.forEach((p) => {
+        if (p.isSpectator) return;
+
+        setTimeout(() => {
+          const targetElem = document.getElementById(`seat-element-${p.seatIndex}`);
+          if (!targetElem) return;
+          const targetRect = targetElem.getBoundingClientRect();
+
+          const endX = targetRect.left - tRect.left + targetRect.width / 2 - 21;
+          const endY = targetRect.top - tRect.top + targetRect.height / 2 - 37;
+
+          const fCard = document.createElement('div');
+          fCard.className = 'flying-card-anim';
+          fCard.style.left = startX + 'px';
+          fCard.style.top = startY + 'px';
+          document.getElementById('table-area').appendChild(fCard);
+
+          setTimeout(() => {
+            fCard.style.left = endX + 'px';
+            fCard.style.top = endY + 'px';
+          }, 20);
+
+          setTimeout(() => {
+            fCard.remove();
+            if (cardRound === 1) {
+              const pCardsRow = document.getElementById(`cards-row-${p.seatIndex}`);
+              if (pCardsRow) {
+                pCardsRow.classList.remove('hidden-deal');
+                pCardsRow.classList.add('show-deal');
+              }
+            }
+          }, 400);
+        }, cardCount * 120);
+
+        cardCount++;
+      });
+    });
+  }
+
+  const DOT_MAP = { 0:[], 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] };
+  function renderHalf(count) {
+    const active = DOT_MAP[count] || [];
+    let html = '<div class="card-half">';
+    for (let i = 0; i < 9; i++) html += `<div class="dot ${active.includes(i)?'active':''}"></div>`;
+    return html + '</div>';
+  }
+
+  function joinGame() {
+    let name = document.getElementById('pName').value.trim() || 'Player_' + Math.floor(Math.random() * 99);
+    socket.emit('join_room', { playerName: name });
+    document.getElementById('login').style.display = 'none';
+  }
+
+  function sendEmote(content) {
+    socket.emit('send_reaction', { type: 'emote', content });
+  }
+
+  socket.on('timer_sync', ({ sec, maxSec }) => {
+    const rings = document.querySelectorAll('.timer-ring-svg');
+    const banner = document.getElementById('info-banner');
+    
+    if (currentRoomStatus === 'WAITING') {
+      banner.innerText = `🎮 Game mulai otomatis dalam ${sec}s...`;
+      rings.forEach(r => r.style.display = 'none');
+      return;
+    }
+
+    if (currentRoomStatus !== 'PLAYING' || sec <= 0) {
+      rings.forEach(r => r.style.display = 'none');
+      return;
+    }
+
+    banner.innerText = `👆 Geser penutup kartumu untuk melihat nilai!`;
+
+    const fullDash = 126;
+    const progress = (sec / maxSec);
+    const offset = fullDash * (1 - progress);
+
+    rings.forEach(ring => {
+      ring.style.display = 'block';
+      const bar = ring.querySelector('.timer-ring-bar');
+      if (bar) {
+        bar.style.strokeDashoffset = offset;
+        if (sec <= 5) bar.classList.add('danger');
+        else bar.classList.remove('danger');
+      }
+    });
+  });
+
+  socket.on('room_state_updated', ({ status, mySeatIndex: seatIdx, dealerSeatIndex, players, isNewDeal }) => {
+    mySeatIndex = seatIdx;
+    currentRoomStatus = status;
+
+    const container = document.getElementById('seats-container');
+    container.innerHTML = '';
+
+    const me = players.find(p => p.seatIndex === mySeatIndex);
+    const isAmIDealer = me && me.isDealer;
+    const dealerBtn = document.getElementById('dealer-btn');
+    const banner = document.getElementById('info-banner');
+
+    if (status === 'WAITING') {
+      if (players.length < 2) {
+        banner.innerText = "⏳ Menunggu pemain lain bergabung";
+      }
+      dealerBtn.style.display = 'none';
+    } else if (status === 'SHOWDOWN') {
+      if (isAmIDealer) {
+        banner.innerText = "💰 Kamu adalah Bandar! Klik tombol di bawah untuk lanjut.";
+        dealerBtn.style.display = 'block';
+      } else {
+        banner.innerText = "⌛ Menunggu Bandar membagikan pot/lanjut...";
+        dealerBtn.style.display = 'none';
+      }
+    }
+
+    players.forEach(p => {
+      const visualPos = (p.seatIndex - mySeatIndex + 6) % 6;
+      const seatDiv = document.createElement('div');
+      seatDiv.className = `seat seat-${visualPos}`;
+      seatDiv.id = `seat-element-${p.seatIndex}`;
+
+      let cardsHTML = '';
+      if (p.isSpectator) cardsHTML = `<div class="spectator-tag">(Menonton)</div>`;
+      else if (p.hasHand) {
+        const hiddenClass = isNewDeal ? 'hidden-deal' : '';
+        cardsHTML = `<div class="cards-row ${hiddenClass}" id="cards-row-${p.seatIndex}">`;
+        [0, 1].forEach(i => {
+          const isCardRev = p.revealedCards && p.revealedCards[i];
+          if (p.hand) {
+            cardsHTML += `
+              <div class="card-slot">
+                <div class="domino-card">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
+                ${visualPos === 0 ? `<div class="card-cover ${isCardRev ? 'revealed' : ''}" id="cover-${i}"></div>` : ''}
+              </div>`;
+          } else {
+            cardsHTML += `<div class="card-slot"><div class="domino-card covered"></div></div>`;
+          }
+        });
+        cardsHTML += `</div>`;
+      }
+
+      let scoreText = '';
+      const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
+
+      if (!p.isSpectator && isBothCardsRevealed && p.evalData) {
+        scoreText = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
+      }
+
+      const dealerCoin = p.isDealer ? `<div class="dealer-coin" title="Bandar">B</div>` : '';
+      const streakBadge = (p.winStreak >= 2) ? `<div class="streak-badge">🔥${p.winStreak}</div>` : '';
+
+      seatDiv.innerHTML = `
+        <div class="player-header">
+          <div class="player-name">${p.name}</div>
+          <div class="avatar-wrapper">
+            <svg class="timer-ring-svg" viewBox="0 0 44 44">
+              <circle class="timer-ring-bg" cx="22" cy="22" r="20"></circle>
+              <circle class="timer-ring-bar" cx="22" cy="22" r="20"></circle>
+            </svg>
+            <div class="avatar-badge" style="background:${p.color}">${p.avatar}</div>
+            ${dealerCoin}
+            ${streakBadge}
+          </div>
+        </div>
+        ${cardsHTML}
+        <div class="score-label">${scoreText}</div>
+      `;
+      container.appendChild(seatDiv);
+
+      if (visualPos === 0 && p.hand && !p.isSpectator) {
+        setTimeout(() => {
+          [0, 1].forEach(i => {
+            if (!p.revealedCards[i]) {
+              const el = document.getElementById(`cover-${i}`);
+              if (el) enableFreeDrag(el, i);
+            }
+          });
+        }, 50);
+      }
+    });
+
+    if (isNewDeal) {
+      setTimeout(() => animateCardsFromDealer(dealerSeatIndex, players, mySeatIndex), 50);
+    }
+  });
+
+  function enableFreeDrag(el, cardIndex) {
+    let startX = 0, startY = 0, isDragging = false;
+    const onStart = (e) => { isDragging = true; startX = e.touches ? e.touches[0].clientX : e.clientX; startY = e.touches ? e.touches[0].clientY : e.clientY; };
+    const onMove = (e) => {
+      if (!isDragging) return;
+      const currentX = (e.touches ? e.touches[0].clientX : e.clientX) - startX;
+      const currentY = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
+      el.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      if (Math.sqrt(currentX * currentX + currentY * currentY) > 35) {
+        isDragging = false;
+        triggerHaptic();
+        socket.emit('reveal_single_card', { cardIndex });
+      }
+    };
+    const onEnd = () => { if (isDragging) el.style.transform = 'translate(0px, 0px)'; isDragging = false; };
+    el.addEventListener('mousedown', onStart); window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onEnd);
+    el.addEventListener('touchstart', onStart); window.addEventListener('touchmove', onMove); window.addEventListener('touchend', onEnd);
+  }
+
+  socket.on('broadcast_reaction', ({ seatIndex, content }) => {
+    const seatEl = document.getElementById(`seat-element-${seatIndex}`);
+    if (seatEl) {
+      const bubble = document.createElement('div');
+      bubble.className = 'reaction-bubble';
+      bubble.innerText = content;
+      seatEl.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 1800);
+    }
+  });
+
+  socket.on('showdown_results', ({ winners }) => {
+    const banner = document.getElementById('info-banner');
+    banner.innerText = `Menunggu bandar`;
+  });
+
+  socket.on('error_msg', (msg) => alert(msg));
+</script>
+
+</body>
+</html>
