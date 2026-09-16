@@ -98,7 +98,6 @@
     .seat-4 { top: 15%; right: 2px; }
     .seat-5 { bottom: 20%; right: 2px; }
 
-    /* KURSI KOSONG (KLIK UNTUK PINDAH) */
     .empty-seat-btn {
       width: 44px;
       height: 44px;
@@ -502,7 +501,7 @@
       startBGM();
     }
   }
-  
+
   function toggleSpectatorMode() {
     playSFX('chip', 0.4);
     socket.emit('toggle_spectator');
@@ -735,7 +734,6 @@
     const isAmIDealer = me && me.isDealer;
     const dealerBtn = document.getElementById('dealer-btn');
     const banner = document.getElementById('info-banner');
-    const me = players.find(p => p.seatIndex === mySeatIndex);
     const specBtn = document.getElementById('spectator-btn');
     
     if (me) {
@@ -776,7 +774,6 @@
       const p = players.find(player => player.seatIndex === seatIdx);
 
       if (p) {
-        // ADA PEMAIN DI KURSI INI
         let cardsHTML = '';
         let fxClass = '';
 
@@ -799,7 +796,6 @@
           [0, 1].forEach(i => {
             const isCardRev = (p.revealedCards && p.revealedCards[i]) || p.isFullyRevealed;
 
-            // Kartu terbuka jika milik sendiri ATAU kartu pemain sudah dibuka penuh oleh lawan
             if (p.hand && (visualPos === 0 || p.isFullyRevealed || status === 'SHOWDOWN')) {
               cardsHTML += `
                 <div class="card-slot">
@@ -851,7 +847,6 @@
           }, 50);
         }
       } else {
-        // Tombol "Duduk" HANYA tampil saat WAITING atau SHOWDOWN
         const canSwitchSeat = (status === 'WAITING' || status === 'SHOWDOWN');
 
         if (canSwitchSeat) {
@@ -859,7 +854,6 @@
             <button class="empty-seat-btn" onclick="switchSeat(${seatIdx})">Duduk</button>
           `;
         } else {
-          // Sembunyikan saat fase PLAYING
           seatDiv.innerHTML = '';
         }
       }
