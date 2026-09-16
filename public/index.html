@@ -32,7 +32,6 @@
       padding-top: 55px;
     }
 
-    /* BAR KONTROL ATAS DITEMPATKAN BERSIH DI KANAN ATAS (SEPERTI CHAT DI KANAN BAWAH) */
     .top-controls-bar {
       position: fixed;
       top: 12px;
@@ -424,7 +423,6 @@
 </head>
 <body>
 
-<!-- BAR ATAS TERPISAH DI KANAN ATAS -->
 <div class="top-controls-bar">
   <button class="btn-top-control" id="spectator-btn" onclick="toggleSpectatorMode()">👁️ Nonton</button>
   <button class="btn-top-control" id="bgm-btn" onclick="toggleBGM()">🎵</button>
@@ -469,6 +467,15 @@
   let isMuted = false;
   let bgmInterval = null;
 
+  // EFEK AUDIO SENSIS DARI FOLDER LOCAL D:\Testing Game\game-qiu-multiplayer\public\audio
+  const sfxDeal = new Audio('/audio/deal.mp3');
+  const sfxFlip = new Audio('/audio/flip.mp3');
+
+  function stopDealSFX() {
+    sfxDeal.pause();
+    sfxDeal.currentTime = 0;
+  }
+
   function startBGM() {
     if (bgmInterval || isMuted) return;
     try {
@@ -507,6 +514,7 @@
     if (isMuted) {
       btn.innerText = '🔇';
       if (bgmInterval) { clearInterval(bgmInterval); bgmInterval = null; }
+      stopDealSFX();
     } else {
       btn.innerText = '🎵';
       startBGM();
@@ -520,22 +528,20 @@
 
   function playSFX(type, volume = 0.5) {
     if (isMuted) return;
+
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      
-      if (type === 'shuffle') {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(320, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(volume * 0.4, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.15);
+      if (type === 'shuffle' || type === 'deal') {
+        stopDealSFX();
+        sfxDeal.volume = volume;
+        sfxDeal.play().catch(e => console.log('Audio Deal Error:', e));
+
+      } else if (type === 'flip' || type === 'reveal') {
+        sfxFlip.currentTime = 0;
+        sfxFlip.volume = volume;
+        sfxFlip.play().catch(e => console.log('Audio Flip Error:', e));
+
       } else if (type === 'chip') {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sine';
@@ -547,7 +553,9 @@
         gain.connect(ctx.destination);
         osc.start();
         osc.stop(ctx.currentTime + 0.08);
-      } else if (type === 'qiu' || type === 'win') {
+
+      } else if (type === 'win') {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
           const osc = ctx.createOscillator();
           const gain = ctx.createGain();
@@ -563,7 +571,7 @@
         });
       }
     } catch (e) {
-      console.log('Audio Autoplay Blocked:', e);
+      console.log('Audio Blocked:', e);
     }
   }
 
@@ -593,8 +601,24 @@
     socket.emit('switch_seat', { targetSeatIndex });
   }
 
+  function compareHands(p1, p2) {
+    const evalA = p1 ? p1.evalData : null;
+    const evalB = p2 ? p2.evalData : null;
+
+    if (!evalA || !evalB) return 0;
+
+    if (evalA.isDoubleTwin && !evalB.isDoubleTwin) return -1;
+    if (!evalA.isDoubleTwin && evalB.isDoubleTwin) return 1;
+    if (evalA.isDoubleTwin && evalB.isDoubleTwin) return evalB.highestTwin - evalA.highestTwin;
+
+    if (evalA.value !== evalB.value) return evalB.value - evalA.value;
+    if (evalA.highestTwin !== evalB.highestTwin) return evalB.highestTwin - evalA.highestTwin;
+    if (evalA.totalDots !== evalB.totalDots) return evalB.totalDots - evalA.totalDots;
+    return 0;
+  }
+
   function animateCardsFromDealer(dealerSeatIdx, players, myIdx) {
-    playSFX('shuffle', 0.5);
+    playSFX('deal', 0.5);
     const dealerElem = document.getElementById(`seat-element-${dealerSeatIdx}`);
     if (!dealerElem) return;
 
@@ -605,6 +629,8 @@
     const startY = dRect.top - tRect.top + dRect.height / 2 - 37;
 
     let cardCount = 0;
+    const activePlayers = players.filter(p => !p.isSpectator);
+    const totalAnimTime = activePlayers.length * 2 * 120 + 400;
 
     [0, 1].forEach((cardRound) => {
       players.forEach((p) => {
@@ -644,6 +670,11 @@
         cardCount++;
       });
     });
+
+    // MATIKAN SUARA DEALER KETIKA PEMBAGIAN KARTU SELESAI
+    setTimeout(() => {
+      stopDealSFX();
+    }, totalAnimTime);
   }
 
   const DOT_MAP = { 0:[], 1:[4], 2:[0,8], 3:[0,4,8], 4:[0,2,6,8], 5:[0,2,4,6,8], 6:[0,2,3,5,6,8] };
@@ -776,7 +807,6 @@
       }
     }
 
-    // RENDER 6 POSISI KURSI MEJA
     for (let seatIdx = 0; seatIdx < 6; seatIdx++) {
       const visualPos = (seatIdx - mySeatIndex + 6) % 6;
       const seatDiv = document.createElement('div');
@@ -822,29 +852,24 @@
         }
 
         let scoreText = '';
-        let scoreColor = '#ffd700'; // Warna default emas
+        let scoreColor = '#ffd700';
 
         const isBothCardsRevealed = p.revealedCards && p.revealedCards[0] && p.revealedCards[1];
 
         if (!p.isSpectator && (isBothCardsRevealed || status === 'SHOWDOWN') && p.evalData) {
           const rawScore = p.evalData.isDoubleTwin ? 'Balak!' : `${p.evalData.value}`;
           
-          // Warna hijau/merah HANYA dihitung saat SHOWDOWN (Ronde Selesai)
           if (status === 'SHOWDOWN') {
             const dealer = players.find(item => item.isDealer);
 
-            if (dealer) {
+            if (dealer && dealer.evalData) {
               if (p.isDealer) {
-                // Bandar tetap warna emas
                 scoreColor = '#ffd700';
               } else {
-                // Bandingkan tangan pemain dengan Bandar
                 const compResult = compareHands(p, dealer);
                 if (compResult < 0) {
-                  // Pemain Menang lawan Bandar -> HIJAU
                   scoreColor = '#2ed573';
                 } else {
-                  // Pemain Kalah / Seri lawan Bandar -> MERAH
                   scoreColor = '#ff4757';
                 }
               }
@@ -915,7 +940,7 @@
       if (Math.sqrt(currentX * currentX + currentY * currentY) > 35) {
         isDragging = false;
         triggerHaptic();
-        playSFX('shuffle', 0.3);
+        playSFX('flip', 0.6);
         socket.emit('reveal_single_card', { cardIndex });
       }
     };
@@ -943,23 +968,6 @@
       playSFX('win', 0.6);
     }
   });
-
-  // Fungsi pembanding kartu untuk UI Client (Sama seperti server)
-  function compareHands(p1, p2) {
-    const evalA = p1.evalData;
-    const evalB = p2.evalData;
-
-    if (!evalA || !evalB) return 0;
-
-    if (evalA.isDoubleTwin && !evalB.isDoubleTwin) return -1;
-    if (!evalA.isDoubleTwin && evalB.isDoubleTwin) return 1;
-    if (evalA.isDoubleTwin && evalB.isDoubleTwin) return evalB.highestTwin - evalA.highestTwin;
-
-    if (evalA.value !== evalB.value) return evalB.value - evalA.value;
-    if (evalA.highestTwin !== evalB.highestTwin) return evalB.highestTwin - evalA.highestTwin;
-    if (evalA.totalDots !== evalB.totalDots) return evalB.totalDots - evalA.totalDots;
-    return 0;
-  }
 
   socket.on('error_msg', (msg) => alert(msg));
 </script>
