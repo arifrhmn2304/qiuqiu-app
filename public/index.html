@@ -548,15 +548,22 @@
       else if (p.hasHand) {
         const hiddenClass = isNewDeal ? 'hidden-deal' : '';
         cardsHTML = `<div class="cards-row ${hiddenClass}" id="cards-row-${p.seatIndex}">`;
+        
         [0, 1].forEach(i => {
-          const isCardRev = p.revealedCards && p.revealedCards[i];
-          if (p.hand) {
+          // Kartu terbuka jika: 
+          // 1. Kartu itu milik kita sendiri & sudah di-reveal, ATAU
+          // 2. Pemain tersebut sudah meng-ungkap kedua kartunya (fully revealed)
+          const isCardRev = (p.revealedCards && p.revealedCards[i]) || p.isFullyRevealed;
+
+          // Jika ada data p.hand DAN (posisi kita sendiri ATAU pemain tersebut sudah buka semua kartunya)
+          if (p.hand && (visualPos === 0 || p.isFullyRevealed)) {
             cardsHTML += `
               <div class="card-slot">
                 <div class="domino-card">${renderHalf(p.hand[i][0])}<div class="card-divider"></div>${renderHalf(p.hand[i][1])}</div>
                 ${visualPos === 0 ? `<div class="card-cover ${isCardRev ? 'revealed' : ''}" id="cover-${i}"></div>` : ''}
               </div>`;
           } else {
+            // Jika kartu pemain lain belum dibuka penuh, tampilkan penutup kartu (covered)
             cardsHTML += `<div class="card-slot"><div class="domino-card covered"></div></div>`;
           }
         });
